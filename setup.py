@@ -43,7 +43,7 @@ setup(
     packages = find_packages(),
     include_package_data=True,
     zip_safe=False,
-    classifiers=(
+    classifiers=[
         'Development Status :: 4 - Beta',
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
@@ -61,5 +61,5 @@ setup(
         'Framework :: Django :: 1.9',
         'Framework :: Django :: 1.10',
         'Framework :: Django :: 1.11',
-    )
+    ]
 )
