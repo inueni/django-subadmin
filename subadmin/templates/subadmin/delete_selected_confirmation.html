@@ -1,0 +1,10 @@
+{% extends "admin/delete_selected_confirmation.html" %}
+{% load i18n admin_urls subadmin_tags %}
+
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+{% subadmin_breadcrumbs %}
+&rsaquo; <a href="{% subadmin_url 'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+&rsaquo; {% trans 'Delete multiple objects' %}
+</div>
+{% endblock %}

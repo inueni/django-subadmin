@@ -1,0 +1,10 @@
+{% extends "admin/change_form.html" %}
+{% load i18n admin_urls subadmin_tags %}
+
+{% block object-tools-items %}
+    {% for link in subadmin_links %}
+    <li><a href="{{ link.url }}">{{ link.name }}</a></li>
+    {% endfor %}
+     
+    {{ block.super }}
+{% endblock %}

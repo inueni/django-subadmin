@@ -1,0 +1,22 @@
+{% extends "admin/change_list.html" %}
+{% load i18n admin_urls subadmin_tags %}
+
+{% if not is_popup %}
+{% block breadcrumbs %}
+<div class="breadcrumbs">
+{% subadmin_breadcrumbs %}
+&rsaquo; {{ cl.opts.verbose_name_plural|capfirst }}
+</div>
+{% endblock %}
+{% endif %}
+
+{% block object-tools-items %}
+{% if has_add_permission %}
+<li>
+{% subadmin_url 'add' as add_url %}
+<a href="{% add_preserved_filters add_url is_popup to_field %}" class="addlink">
+{% blocktrans with cl.opts.verbose_name as name %}Add {{ name }}{% endblocktrans %}
+</a>
+</li>
+{% endif %}
+{% endblock %}

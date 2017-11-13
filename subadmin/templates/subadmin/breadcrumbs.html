@@ -1,0 +1,7 @@
+{% load i18n %}
+
+<a href="{% url 'admin:index' %}">{% trans 'Home' %}</a>
+&rsaquo; <a href="{{ root.url }}">{{ root.name }}</a>
+{% for item in breadcrumbs %}
+&rsaquo; {% if item.has_change_permission %}<a href="{{ item.url }}">{{ item.name|capfirst }}</a>{% else %}{{ item.name|capfirst }}{% endif %}
+{% endfor %}
