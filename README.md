@@ -70,7 +70,25 @@ admin.site.register(MailingList, MailingListAdmin)
 
 With just a few lines of code you get a fully functional `ModelAdmin`, that will automatically pull in just the relevant related objects, based on `ForeignKey` relation between the two models, it will also auto set `ForeignKey` fields for nested relations and exclude them from change form when adding and editing objects on subadmin.
 
-If you want to see it in action, or get a more in-depth look at how to set everything up, check out <https://github.com/inueni/django-subadmin-example>.
+### Screenshots
+
+![alt text](https://github.com/inueni/django-subadmin-example/raw/master/screenshots/subadmin_screenshot_1.png?raw=true)
+
+ `SubAdmin` instances are accesible from edit view of the `ModelAdmin` instance they are nested in. In the screenshot above you can see links to _Subscribers_ and _Messages_ subadmins (marked with red rectangle) for `MailingList` instance _Mailing list 5_.
+
+---
+
+![alt text](https://github.com/inueni/django-subadmin-example/raw/master/screenshots/subadmin_screenshot_2.png?raw=true)
+
+ `SubAdmin` looks and behaves just like a regular `ModelAdmin`, but looking at breadcrumbs (marked with red rectangle), you can see it is nested within another `ModelAdmin`. Displayed `Subscribers` are limited to those related to `MailingList` instance _Mailing list 5_.
+
+---
+
+ ![alt text](https://github.com/inueni/django-subadmin-example/raw/master/screenshots/subadmin_screenshot_3.png?raw=true)
+
+When adding or editing objects with `SubAdmin`, `ForeignKey` fields to parent instances are removed from the form and automatically set when saving. In this example `mailing_list` field is removed and value is set to parent `MailingList` instance _Mailing list 5_.
+
+> If you want to see it in action, or get a more in-depth look at how to set everything up, check out <https://github.com/inueni/django-subadmin-example>.
 
 
 ## Supported Django versions
