@@ -1,16 +1,18 @@
 from __future__ import unicode_literals
 
 from collections import OrderedDict
+from functools import partial, update_wrapper
 
-from django.contrib.admin.options import IS_POPUP_VAR, TO_FIELD_VAR
-from django.contrib.admin.utils import unquote, quote
-from django.forms.models import _get_foreign_key
-from django.db import transaction
 from django.conf.urls import url, include
+from django.contrib.admin.options import IS_POPUP_VAR, TO_FIELD_VAR
+from django.contrib.admin.utils import unquote, quote, flatten_fieldsets
 from django.contrib import admin
 from django.contrib import messages
 from django.contrib.admin.views.main import ChangeList
 from django.contrib.admin.actions import delete_selected
+from django.core.exceptions import FieldError
+from django.db import transaction
+from django.forms.models import _get_foreign_key, modelform_defines_fields, modelform_factory, ALL_FIELDS
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.template.response import SimpleTemplateResponse
@@ -22,7 +24,6 @@ from django.utils.http import urlencode, urlquote
 from django.utils.six.moves.urllib.parse import parse_qsl, urlparse, urlunparse
 from django.utils.translation import ugettext as _
 from django.views.decorators.csrf import csrf_protect
-from functools import update_wrapper
 
 try:
     from django.urls import Resolver404, get_script_prefix, resolve, reverse
@@ -201,22 +202,52 @@ class SubAdminMixin(SubAdminBase):
         return super(SubAdminMixin, self).get_queryset(request).filter(**lookup_kwargs)
     
     def get_form(self, request, obj=None, **kwargs):
-        if not MODELADMIN_GET_EXCLUDE_SUPPORT:
-            # Workaround for Django < 1.11 not supporting get_exclude in ModelAdmin
-            exclude = self.exclude
-            self.exclude = list(exclude or []) + self.get_exclude(request, obj)
-            form = super(SubAdminMixin, self).get_form(request, obj, **kwargs)
-            self.exclude = exclude
-            return form
+        if MODELADMIN_GET_EXCLUDE_SUPPORT:
+            return super(SubAdminMixin, self).get_form(request, obj, **kwargs)
+
+        if 'fields' in kwargs:
+            fields = kwargs.pop('fields')
+        else:
+            fields = flatten_fieldsets(self.get_fieldsets(request, obj))
+        excluded = self.get_exclude(request, obj)
+        exclude = [] if excluded is None else list(excluded)
+        readonly_fields = self.get_readonly_fields(request, obj)
+        exclude.extend(readonly_fields)
+
+        if excluded is None and hasattr(self.form, '_meta') and self.form._meta.exclude:
+            exclude.extend(self.form._meta.exclude)
+
+        exclude = exclude or None
+
+        new_attrs = OrderedDict(
+            (f, None) for f in readonly_fields
+            if f in self.form.declared_fields
+        )
         
-        return super(SubAdminMixin, self).get_form(request, obj, **kwargs)
+        form = type(self.form.__name__, (self.form,), new_attrs)
+
+        defaults = {
+            "form": form,
+            "fields": fields,
+            "exclude": exclude,
+            "formfield_callback": partial(self.formfield_for_dbfield, request=request),
+        }
+        defaults.update(kwargs)
+
+        if defaults['fields'] is None and not modelform_defines_fields(defaults['form']):
+            defaults['fields'] = ALL_FIELDS
+
+        try:
+            return modelform_factory(self.model, **defaults)
+        except FieldError as e:
+            raise FieldError('%s. Check fields/fieldsets/exclude attributes of class %s.' % (e, self.__class__.__name__))
 
     def get_exclude(self, request, obj=None):
-        try:
-            exclude = super(SubAdminMixin, self).get_exclude(request, obj) or []
-        except AttributeError:
-            exclude = []
-
+        if MODELADMIN_GET_EXCLUDE_SUPPORT:
+            excluded = super(SubAdminMixin, self).get_exclude(request, obj)
+        else:
+            excluded = self.exclude
+        exclude = [] if excluded is None else list(excluded)
         exclude.extend(request.subadmin.related_instances.keys())
         return list(set(exclude))
 

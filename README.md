@@ -93,9 +93,7 @@ When adding or editing objects with `SubAdmin`, `ForeignKey` fields to parent in
 
 ## Supported Django versions
 
-Current release of `django-subadmin` is **1.9.0** and is compatible with Django 1.9, 1.10 and 1.11.
-
-Since Django versions before 1.11 don't support `get_exclude` on `ModelAdmin` instances, a workaround that temporarily stores excluded fields on `ModelAdmin` instance, is used. This should not cause any issues under normal circumstances.
+Current release of `django-subadmin` is **1.9.1** and is compatible with Django 1.9, 1.10 and 1.11.
 
 #### Verison numbering
 
