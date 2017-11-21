@@ -2,11 +2,13 @@
 # -*- coding: utf-8 -*-
 from __future__ import unicode_literals, print_function
 
-from setuptools import setup, find_packages
 import os
 import sys
+from io import open
+from setuptools import setup, find_packages
 
-version = '1.9.1'
+
+version = '1.9.2'
 
 try:
     from pypandoc import convert

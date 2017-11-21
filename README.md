@@ -93,7 +93,7 @@ When adding or editing objects with `SubAdmin`, `ForeignKey` fields to parent in
 
 ## Supported Django versions
 
-Current release of `django-subadmin` is **1.9.1** and is compatible with Django 1.9, 1.10 and 1.11.
+Current release of `django-subadmin` is **1.9.2** and is compatible with Django 1.9, 1.10 and 1.11.
 
 #### Verison numbering
 
