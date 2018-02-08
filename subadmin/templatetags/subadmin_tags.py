@@ -1,9 +1,15 @@
 from __future__ import unicode_literals
 
-from django.core.urlresolvers import reverse
+import django
+
 from django.contrib.admin.templatetags.admin_modify import submit_row
 from django.utils.encoding import force_text
 from django.template import Library
+
+if django.VERSION < (1, 11):
+    from django.core.urlresolvers import reverse
+else:
+    from django.urls import reverse
 
 
 register = Library()
