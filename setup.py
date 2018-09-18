@@ -11,9 +11,9 @@ from setuptools import setup, find_packages
 version = '1.9.2'
 
 try:
-    from pypandoc import convert
+    from pypandoc import convert_file
     def read_md(f):
-        return convert(f, 'rst')
+        return convert_file(f, 'rst')
 except ImportError:
     print("warning: pypandoc module not found, could not convert Markdown to RST")
     def read_md(f):
