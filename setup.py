@@ -8,24 +8,14 @@ from io import open
 from setuptools import setup, find_packages
 
 
-version = '1.9.2'
+version = '1.9.3'
 
-try:
-    from pypandoc import convert_file
-    def read_md(f):
-        return convert_file(f, 'rst')
-except ImportError:
-    print("warning: pypandoc module not found, could not convert Markdown to RST")
-    def read_md(f):
-        return open(f, 'r', encoding='utf-8').read()
+def read_md(file_path):
+    with open(file_path) as fp:
+        return fp.read()
 
 
-if sys.argv[-1] == 'publish':
-    try:
-        import pypandoc
-    except ImportError:
-        print("pypandoc not installed.\nUse `pip install pypandoc`.")
-        
+if sys.argv[-1] == 'publish':        
     print("You probably want to also tag the version now:")
     print("  git tag -a %s -m 'version %s'" % (version, version))
     print("  git push --tags")
@@ -42,11 +32,12 @@ setup(
     keywords = 'django admin modeladmin foreignkey related field',
     description = 'A special kind of ModelAdmin that allows it to be nested within another ModelAdmin',
     long_description = read_md('README.md'),
+    long_description_content_type = 'text/markdown',
     packages = find_packages(),
     include_package_data=True,
     zip_safe=False,
     classifiers=[
-        'Development Status :: 4 - Beta',
+        'Development Status :: 5 - Production/Stable',
         'Environment :: Web Environment',
         'Intended Audience :: Developers',
         'Operating System :: OS Independent',
@@ -55,10 +46,6 @@ setup(
         'Programming Language :: Python',
         "Programming Language :: Python :: 2",
         'Programming Language :: Python :: 2.7',
-        'Programming Language :: Python :: 3',
-        'Programming Language :: Python :: 3.4',
-        'Programming Language :: Python :: 3.5',
-        'Programming Language :: Python :: 3.6',
         'Framework :: Django',
         'Framework :: Django :: 1.9',
         'Framework :: Django :: 1.10',

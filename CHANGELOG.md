@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.9.3 - 2020-02-27
+- Updated README.md with legacy version info.
+- Remove `pandoc` dependency as PyPi now supports Markdown natively.
+
 ## [1.9.2] - 2017-11-21
 - _Fix_: setup.py is now python2 compatible ([Issue #4])
 
