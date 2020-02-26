@@ -2,6 +2,16 @@
 
 `django-subadmin` provides a special kind of `ModelAdmin`, called `SubAdmin`, that allows it to be nested within another `ModelAdmin` instance. Similar to django's built-in `InlineModelAdmin`, it allows editing of related objects, but instead of doing it inline, it gives you a full `ModelAdmin` as sub-admin of parent `ModelAdmin`. Like `InlineModelAdmin` it works on models related by `ForeignKey`. Multiple `SubAdmin` instances can be nested within a single `ModelAdmin` or `SubAdmin` allowing for multi-level nesting.
 
+### Suported Python and Django releases
+
+Current release of `django-subadmin` is **2.0.0** and it supports Python 3 only and Django versions 2.0 and up.
+
+There is also a *legacy* **1.9.3** release with support for Python 2.7 and Django versions 1.9, 1.10 and 1.11. This release is **no longer maintained and supported**, but it's made available for legacy applications.
+
+#### Verison numbering
+
+django-subadmin versions follow Django version numbers. django-subadmin major and minor version numbers equal the minimal compatible django release.
+
 ## Installation
 
 The easiest and recommended way to install `django-subadmin` is from [PyPI](https://pypi.python.org/pypi/django-subadmin)
@@ -89,15 +99,6 @@ With just a few lines of code you get a fully functional `ModelAdmin`, that will
 When adding or editing objects with `SubAdmin`, `ForeignKey` fields to parent instances are removed from the form and automatically set when saving. In this example `mailing_list` field is removed and value is set to parent `MailingList` instance _Mailing list 5_.
 
 > If you want to see it in action, or get a more in-depth look at how to set everything up, check out <https://github.com/inueni/django-subadmin-example>.
-
-
-## Supported Django versions
-
-Current release of `django-subadmin` is **1.9.2** and is compatible with Django 1.9, 1.10 and 1.11.
-
-#### Verison numbering
-
-`django-subadmin` version numbers are related to Django version numbers. `django-subadmin` major and minor version numbers equal the minimal compatible django release.
 
 
 ## Stability
