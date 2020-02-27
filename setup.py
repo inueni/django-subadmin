@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
-from __future__ import unicode_literals, print_function
 
 import os
 import sys
@@ -8,7 +6,7 @@ from io import open
 from setuptools import setup, find_packages
 
 
-version = '1.9.3'
+version = '2.0.0'
 
 def read_md(file_path):
     with open(file_path) as fp:
@@ -34,7 +32,7 @@ setup(
     long_description = read_md('README.md'),
     long_description_content_type = 'text/markdown',
     packages = find_packages(),
-    python_requires = '>2.6, <3.0',
+    python_requires = '>=3',
     include_package_data=True,
     zip_safe=False,
     classifiers=[
@@ -45,11 +43,11 @@ setup(
         'License :: OSI Approved :: MIT License',
         'Topic :: Software Development :: Libraries :: Python Modules',
         'Programming Language :: Python',
-        "Programming Language :: Python :: 2",
-        'Programming Language :: Python :: 2.7',
+        "Programming Language :: Python :: 3",
         'Framework :: Django',
-        'Framework :: Django :: 1.9',
-        'Framework :: Django :: 1.10',
-        'Framework :: Django :: 1.11',
+        'Framework :: Django :: 2.0',
+        'Framework :: Django :: 2.1',
+        'Framework :: Django :: 2.2',
+        'Framework :: Django :: 3.0',
     ]
 )
