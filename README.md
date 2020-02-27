@@ -103,4 +103,4 @@ When adding or editing objects with `SubAdmin`, `ForeignKey` fields to parent in
 
 ## Stability
 
-`django-subadmin` has evolved from code that has been running on production servers since early 2014 without any issues. Still, the code has been heavily refactored prior to public release, and while it is unlikely to eat your data, consider it **BETA** software.
+`django-subadmin` has evolved from code that has been running on production servers since early 2014 without any issues. The code is provided **as-is** and the developers bear no responsibility for any issues stemming from it's use.
