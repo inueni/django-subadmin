@@ -34,6 +34,7 @@ setup(
     long_description = read_md('README.md'),
     long_description_content_type = 'text/markdown',
     packages = find_packages(),
+    python_requires = '>2.6, <3.0',
     include_package_data=True,
     zip_safe=False,
     classifiers=[
