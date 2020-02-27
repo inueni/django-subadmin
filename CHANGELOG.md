@@ -1,8 +1,12 @@
 # Changelog
 
-## 1.9.3 - 2020-02-27
+## [2.0.0] - 2020-02-27
+ - **BREAKING**: This release no longer supports Python 2 and requires Django version 2.0 and up.
+ - Python 3 compatibility
+
+## [1.9.3] - 2020-02-27
 - Updated README.md with legacy version info.
-- Remove `pandoc` dependency as PyPi now supports Markdown natively.
+- Remove `pandoc` dev dependency as PyPI now supports Markdown natively.
 
 ## [1.9.2] - 2017-11-21
 - _Fix_: setup.py is now python2 compatible ([Issue #4])
@@ -14,6 +18,8 @@
 ## 1.9.0 - 2017-11-13
 - Initial release
 
+[2.0.0]: https://github.com/inueni/django-subadmin/compare/v1.9.3...v2.0.0
+[1.9.3]: https://github.com/inueni/django-subadmin/compare/v1.9.2...v1.9.3
 [1.9.2]: https://github.com/inueni/django-subadmin/compare/v1.9.1...v1.9.2
 [1.9.1]: https://github.com/inueni/django-subadmin/compare/v1.9.0...v1.9.1
 [Issue #2]: https://github.com/inueni/django-subadmin/issues/2
