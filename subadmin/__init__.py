@@ -1,40 +1,31 @@
-from __future__ import unicode_literals
-
+import json
 from collections import OrderedDict
 from functools import partial, update_wrapper
+from urllib.parse import parse_qsl, urlparse, urlunparse
 
-from django.conf.urls import url, include
+from django.urls import path, re_path, include
 from django.contrib.admin.options import IS_POPUP_VAR, TO_FIELD_VAR
-from django.contrib.admin.utils import unquote, quote, flatten_fieldsets
+from django.contrib.admin.utils import unquote, quote
 from django.contrib import admin
 from django.contrib import messages
 from django.contrib.admin.views.main import ChangeList
 from django.contrib.admin.actions import delete_selected
-from django.core.exceptions import FieldError
 from django.db import transaction
-from django.forms.models import _get_foreign_key, modelform_defines_fields, modelform_factory, ALL_FIELDS
+from django.forms.models import _get_foreign_key
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.template.response import SimpleTemplateResponse
 from django.utils.decorators import method_decorator
-from django.utils.encoding import force_text
 from django.utils.functional import cached_property
 from django.utils.html import format_html
 from django.utils.http import urlencode, urlquote
-from django.utils.six.moves.urllib.parse import parse_qsl, urlparse, urlunparse
 from django.utils.translation import ugettext as _
 from django.views.decorators.csrf import csrf_protect
-
-try:
-    from django.urls import Resolver404, get_script_prefix, resolve, reverse
-except ImportError:
-    from django.core.urlresolvers import Resolver404, get_script_prefix, resolve, reverse
+from django.urls import Resolver404, get_script_prefix, resolve, reverse
 
 csrf_protect_m = method_decorator(csrf_protect)
 
 __all__ = ('SubAdmin', 'RootSubAdmin', 'SubAdminMixin', 'RootSubAdminMixin', 'SubAdminChangeList', 'SubAdminHelper')
-
-MODELADMIN_GET_EXCLUDE_SUPPORT = True if hasattr(admin.ModelAdmin, 'get_exclude') else False
 
 
 class SubAdminHelper(object):
@@ -88,7 +79,7 @@ class SubAdminHelper(object):
 
 class SubAdminChangeList(ChangeList):
     def __init__(self, request, *args, **kwargs):
-        super(SubAdminChangeList, self).__init__(request, *args, **kwargs)
+        super().__init__(request, *args, **kwargs)
         self.request = request
 
     def url_for_result(self, result):
@@ -109,7 +100,7 @@ class SubAdminBase(object):
             regex = r'^(.+)/%s/' % modeladmin.model._meta.model_name
 
             urls = [
-                url(regex , include(modeladmin.urls))
+                re_path(regex , include(modeladmin.urls))
             ]
 
             urlpatterns += urls
@@ -128,7 +119,7 @@ class SubAdminBase(object):
                     })
         
         context.update({'subadmin_links': subadmin_links})
-        return super(SubAdminBase, self).render_change_form(request, context, add=add, change=change,
+        return super().render_change_form(request, context, add=add, change=change,
                                                                       form_url=form_url, obj=obj)
 
 
@@ -150,7 +141,7 @@ class SubAdminMixin(SubAdminBase):
         if self.fk_name is None:
             self.fk_name = _get_foreign_key(parent_model, self.model).name
 
-        super(SubAdminMixin, self).__init__(self.model, parent_admin.admin_site)
+        super().__init__(self.model, parent_admin.admin_site)
         
         self.subadmin_instances = self.get_subadmin_instances()
 
@@ -158,10 +149,10 @@ class SubAdminMixin(SubAdminBase):
         return self.subadmin_helper_class(self, view_args, object_id=object_id)
 
     def get_model_perms(self, request):
-        return super(SubAdminMixin, self).get_model_perms(request)
+        return super().get_model_perms(request)
 
     def get_actions(self, request):
-        actions = super(SubAdminMixin, self).get_actions(request)
+        actions = super().get_actions(request)
 
         def subadmin_delete_selected(modeladmin, req, qs):
             response = delete_selected(modeladmin, req, qs)
@@ -186,12 +177,12 @@ class SubAdminMixin(SubAdminBase):
         base_viewname = self.get_base_viewname()
 
         urlpatterns = [
-            url(r'' , include(self.get_subadmin_urls())),
-            url(r'^$', wrap(self.changelist_view), name='%s_changelist' % base_viewname),
-            url(r'^add/$', wrap(self.add_view), name='%s_add' % base_viewname),
-            url(r'^(.+)/history/$', wrap(self.history_view), name='%s_history' % base_viewname),
-            url(r'^(.+)/delete/$', wrap(self.delete_view), name='%s_delete' % base_viewname),
-            url(r'^(.+)/change/$', wrap(self.change_view), name='%s_change' % base_viewname),
+            path('' , include(self.get_subadmin_urls())),
+            path('', wrap(self.changelist_view), name='%s_changelist' % base_viewname),
+            path('add/', wrap(self.add_view), name='%s_add' % base_viewname),
+            re_path(r'^(.+)/history/$', wrap(self.history_view), name='%s_history' % base_viewname),
+            re_path(r'^(.+)/delete/$', wrap(self.delete_view), name='%s_delete' % base_viewname),
+            re_path(r'^(.+)/change/$', wrap(self.change_view), name='%s_change' % base_viewname),
         ]
 
         urlpatterns =  urlpatterns
@@ -199,55 +190,11 @@ class SubAdminMixin(SubAdminBase):
 
     def get_queryset(self, request):
         lookup_kwargs = request.subadmin.lookup_kwargs
-        return super(SubAdminMixin, self).get_queryset(request).filter(**lookup_kwargs)
-    
-    def get_form(self, request, obj=None, **kwargs):
-        if MODELADMIN_GET_EXCLUDE_SUPPORT:
-            return super(SubAdminMixin, self).get_form(request, obj, **kwargs)
-
-        if 'fields' in kwargs:
-            fields = kwargs.pop('fields')
-        else:
-            fields = flatten_fieldsets(self.get_fieldsets(request, obj))
-        excluded = self.get_exclude(request, obj)
-        exclude = [] if excluded is None else list(excluded)
-        readonly_fields = self.get_readonly_fields(request, obj)
-        exclude.extend(readonly_fields)
-
-        if excluded is None and hasattr(self.form, '_meta') and self.form._meta.exclude:
-            exclude.extend(self.form._meta.exclude)
-
-        exclude = exclude or None
-
-        new_attrs = OrderedDict(
-            (f, None) for f in readonly_fields
-            if f in self.form.declared_fields
-        )
-        
-        form = type(self.form.__name__, (self.form,), new_attrs)
-
-        defaults = {
-            "form": form,
-            "fields": fields,
-            "exclude": exclude,
-            "formfield_callback": partial(self.formfield_for_dbfield, request=request),
-        }
-        defaults.update(kwargs)
-
-        if defaults['fields'] is None and not modelform_defines_fields(defaults['form']):
-            defaults['fields'] = ALL_FIELDS
-
-        try:
-            return modelform_factory(self.model, **defaults)
-        except FieldError as e:
-            raise FieldError('%s. Check fields/fieldsets/exclude attributes of class %s.' % (e, self.__class__.__name__))
+        return super().get_queryset(request).filter(**lookup_kwargs)
 
     def get_exclude(self, request, obj=None):
-        if MODELADMIN_GET_EXCLUDE_SUPPORT:
-            excluded = super(SubAdminMixin, self).get_exclude(request, obj)
-        else:
-            excluded = self.exclude
-        exclude = [] if excluded is None else list(excluded)
+        exclude = super().get_exclude(request, obj)
+        exclude = list(exclude) if exclude else []
         exclude.extend(request.subadmin.related_instances.keys())
         return list(set(exclude))
 
@@ -255,7 +202,7 @@ class SubAdminMixin(SubAdminBase):
         for fk_field, instance in request.subadmin.related_instances.items():
             if fk_field in self.model._meta._forward_fields_map.keys():
                 setattr(obj, fk_field, instance)
-        super(SubAdminMixin, self).save_model(request, obj, form, change)
+        super().save_model(request, obj, form, change)
 
     def get_base_viewname(self):
         if hasattr(self.parent_admin, 'get_base_viewname'):
@@ -341,20 +288,20 @@ class SubAdminMixin(SubAdminBase):
         extra_context = kwargs.get('extra_context')
         request.subadmin = SubAdminHelper(self, args)
         extra_context = self.context_add_parent_data(request, extra_context)
-        return super(SubAdminMixin, self).changelist_view(request, extra_context)
+        return super().changelist_view(request, extra_context)
 
     def add_view(self, request, *args, **kwargs):
         form_url, extra_context = kwargs.get('form_url', ''), kwargs.get('extra_context')
         request.subadmin = SubAdminHelper(self, args)
         extra_context = self.context_add_parent_data(request, extra_context)
-        return super(SubAdminMixin, self).add_view(request, form_url, extra_context)
+        return super().add_view(request, form_url, extra_context)
 
     def change_view(self, request, *args, **kwargs):
         form_url, extra_context = kwargs.get('form_url', ''), kwargs.get('extra_context')
         object_id = args[-1]
         request.subadmin = SubAdminHelper(self, args, object_id=object_id)
         extra_context = self.context_add_parent_data(request, extra_context)
-        return super(SubAdminMixin, self).change_view(request, object_id, form_url, extra_context)
+        return super().change_view(request, object_id, form_url, extra_context)
 
     @csrf_protect_m
     @transaction.atomic
@@ -363,14 +310,14 @@ class SubAdminMixin(SubAdminBase):
         object_id = args[-1]
         request.subadmin = SubAdminHelper(self, args, object_id=object_id)
         extra_context = self.context_add_parent_data(request, extra_context)
-        return super(SubAdminMixin, self).delete_view(request, object_id, extra_context)
+        return super().delete_view(request, object_id, extra_context)
 
     def history_view(self, request, *args, **kwargs):
         extra_context = kwargs.get('extra_context')
         object_id = args[-1]
         request.subadmin = SubAdminHelper(self, args, object_id=object_id)
         extra_context = self.context_add_parent_data(request, extra_context)
-        return super(SubAdminMixin, self).history_view(request, object_id, extra_context)
+        return super().history_view(request, object_id, extra_context)
 
     def response_add(self, request, obj, post_url_continue=None):
         opts = obj._meta
@@ -386,10 +333,10 @@ class SubAdminMixin(SubAdminBase):
         if self.has_change_permission(request, obj):
             obj_repr = format_html('<a href="{}">{}</a>', urlquote(obj_url), obj)
         else:
-            obj_repr = force_text(obj)
+            obj_repr = str(obj)
         
         msg_dict = {
-            'name': force_text(opts.verbose_name),
+            'name': str(opts.verbose_name),
             'obj': obj_repr,
         }
 
@@ -401,8 +348,8 @@ class SubAdminMixin(SubAdminBase):
                 attr = obj._meta.pk.attname
             value = obj.serializable_value(attr)
             popup_response_data = json.dumps({
-                'value': six.text_type(value),
-                'obj': six.text_type(obj),
+                'value': str(value),
+                'obj': str(obj),
             })
             return SimpleTemplateResponse('admin/popup_response.html', {
                 'popup_response_data': popup_response_data,
@@ -451,9 +398,9 @@ class SubAdminMixin(SubAdminBase):
             new_value = obj.serializable_value(attr)
             popup_response_data = json.dumps({
                 'action': 'change',
-                'value': six.text_type(value),
-                'obj': six.text_type(obj),
-                'new_value': six.text_type(new_value),
+                'value': str(value),
+                'obj': str(obj),
+                'new_value': str(new_value),
             })
             return SimpleTemplateResponse('admin/popup_response.html', {
                 'popup_response_data': popup_response_data,
@@ -464,7 +411,7 @@ class SubAdminMixin(SubAdminBase):
         preserved_filters = self.get_preserved_filters(request)
 
         msg_dict = {
-            'name': force_text(opts.verbose_name),
+            'name': str(opts.verbose_name),
             'obj': format_html('<a href="{}">{}</a>', urlquote(request.path), obj),
         }
         if "_continue" in request.POST:
@@ -541,8 +488,8 @@ class SubAdminMixin(SubAdminBase):
         self.message_user(
             request,
             _('The %(name)s "%(obj)s" was deleted successfully.') % {
-                'name': force_text(opts.verbose_name),
-                'obj': force_text(obj_display),
+                'name': str(opts.verbose_name),
+                'obj': str(obj_display),
             },
             messages.SUCCESS,
         )
@@ -562,11 +509,11 @@ class RootSubAdminMixin(SubAdminBase):
     change_form_template = 'subadmin/parent_change_form.html'
 
     def __init__(self, *args, **kwargs):
-        super(RootSubAdminMixin, self).__init__(*args, **kwargs)
+        super().__init__(*args, **kwargs)
         self.subadmin_instances = self.get_subadmin_instances()     
 
     def get_urls(self):
-        return self.get_subadmin_urls() + super(RootSubAdminMixin, self).get_urls()
+        return self.get_subadmin_urls() + super().get_urls()
 
     def reverse_url(self, viewname, *args, **kwargs):
         info = self.model._meta.app_label, self.model._meta.model_name, viewname
