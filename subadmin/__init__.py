@@ -14,7 +14,7 @@ from django.db import transaction
 from django.forms.models import _get_foreign_key
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
-from django.template.response import SimpleTemplateResponse
+from django.template.response import SimpleTemplateResponse, TemplateResponse
 from django.utils.decorators import method_decorator
 from django.utils.functional import cached_property
 from django.utils.html import format_html
@@ -22,6 +22,7 @@ from django.utils.http import urlencode, urlquote
 from django.utils.translation import ugettext as _
 from django.views.decorators.csrf import csrf_protect
 from django.urls import Resolver404, get_script_prefix, resolve, reverse
+from .forms import get_form
 
 csrf_protect_m = method_decorator(csrf_protect)
 
@@ -37,15 +38,15 @@ class SubAdminHelper(object):
         self.view_args = view_args
         self.base_viewname = sub_admin.get_base_viewname()
         self.load_tree(sub_admin)
-        
-        
+
+
     def load_tree(self, sub_admin):
         parent_admin = sub_admin.parent_admin
         fk_lookup = sub_admin.fk_name
 
         i = 2 if self.object_id else 1
         while parent_admin:
-            obj = sub_admin.get_parent_instance(self.view_args[i * -1])
+            obj = sub_admin.get_parent_instance(self.view_args[-i])
             self.parents.append({
                 'admin': parent_admin,
                 'object': obj,
@@ -57,13 +58,13 @@ class SubAdminHelper(object):
             parent_admin = getattr(sub_admin, 'parent_admin', None)
             if parent_admin:
                 fk_lookup = '%s__%s' % (fk_lookup, sub_admin.fk_name)
-            
+
             i += 1
-    
+
     @cached_property
     def parent(self):
         return self.parents[0]
-    
+
     @cached_property
     def root(self):
         return self.parents[-1]
@@ -104,7 +105,7 @@ class SubAdminBase(object):
             ]
 
             urlpatterns += urls
-        
+
         return urlpatterns
 
     def render_change_form(self, request, context, add=False, change=False, form_url='', obj=None):
@@ -117,7 +118,7 @@ class SubAdminBase(object):
                         'name': modeladmin.model._meta.verbose_name_plural,
                         'url': modeladmin.reverse_url('changelist', *url_args),
                     })
-        
+
         context.update({'subadmin_links': subadmin_links})
         return super().render_change_form(request, context, add=add, change=change,
                                                                       form_url=form_url, obj=obj)
@@ -142,7 +143,7 @@ class SubAdminMixin(SubAdminBase):
             self.fk_name = _get_foreign_key(parent_model, self.model).name
 
         super().__init__(self.model, parent_admin.admin_site)
-        
+
         self.subadmin_instances = self.get_subadmin_instances()
 
     def get_subadmin_helper(self, view_args, object_id=None):
@@ -198,11 +199,9 @@ class SubAdminMixin(SubAdminBase):
         exclude.extend(request.subadmin.related_instances.keys())
         return list(set(exclude))
 
-    def save_model(self, request, obj, form, change):
-        for fk_field, instance in request.subadmin.related_instances.items():
-            if fk_field in self.model._meta._forward_fields_map.keys():
-                setattr(obj, fk_field, instance)
-        super().save_model(request, obj, form, change)
+    def get_form(self, request, obj=None, change=False, **kwargs):
+        form = super().get_form(request, obj, change, **kwargs)
+        return get_form(form, self.model, request.subadmin.related_instances)
 
     def get_base_viewname(self):
         if hasattr(self.parent_admin, 'get_base_viewname'):
@@ -220,7 +219,7 @@ class SubAdminMixin(SubAdminBase):
         if hasattr(request, 'subadmin'):
             return request.subadmin.base_url_args
         return []
-        
+
     def context_add_parent_data(self, request, context=None):
         context = context or {}
         parent_instance = request.subadmin.parent_instance
@@ -229,7 +228,7 @@ class SubAdminMixin(SubAdminBase):
             'parent_opts': parent_instance._meta,
         })
         return context
-    
+
     def get_parent_instance(self, parent_id):
         return get_object_or_404(self.parent_model, pk=unquote(parent_id))
 
@@ -327,16 +326,16 @@ class SubAdminMixin(SubAdminBase):
 
         if "_saveasnew" in request.POST:
             url_args = url_args[:-1]
-        
+
         obj_url = self.reverse_url('change', *url_args + [quote(pk_value)])
-        
+
         if self.has_change_permission(request, obj):
             obj_repr = format_html('<a href="{}">{}</a>', urlquote(obj_url), obj)
         else:
             obj_repr = str(obj)
-        
+
         msg_dict = {
-            'name': str(opts.verbose_name),
+            'name': opts.verbose_name,
             'obj': obj_repr,
         }
 
@@ -351,7 +350,11 @@ class SubAdminMixin(SubAdminBase):
                 'value': str(value),
                 'obj': str(obj),
             })
-            return SimpleTemplateResponse('admin/popup_response.html', {
+            return TemplateResponse(request, self.popup_response_template or [
+                'admin/%s/%s/popup_response.html' % (opts.app_label, opts.model_name),
+                'admin/%s/popup_response.html' % opts.app_label,
+                'admin/popup_response.html',
+            ], {
                 'popup_response_data': popup_response_data,
             })
 
@@ -389,7 +392,7 @@ class SubAdminMixin(SubAdminBase):
             )
             self.message_user(request, msg, messages.SUCCESS)
             return self.response_post_save_add(request, obj)
-    
+
     def response_change(self, request, obj):
         if IS_POPUP_VAR in request.POST:
             to_field = request.POST.get(TO_FIELD_VAR)
@@ -472,7 +475,7 @@ class SubAdminMixin(SubAdminBase):
         else:
             post_url = reverse('admin:index', current_app=self.admin_site.name)
         return HttpResponseRedirect(post_url)
-    
+
     def response_delete(self, request, obj_display, obj_id):
         opts = self.model._meta
 
@@ -510,7 +513,7 @@ class RootSubAdminMixin(SubAdminBase):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
-        self.subadmin_instances = self.get_subadmin_instances()     
+        self.subadmin_instances = self.get_subadmin_instances()
 
     def get_urls(self):
         return self.get_subadmin_urls() + super().get_urls()
