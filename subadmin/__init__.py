@@ -4,6 +4,7 @@ from functools import partial, update_wrapper
 from urllib.parse import parse_qsl, urlparse, urlunparse
 
 from django.urls import path, re_path, include
+from django.core.exceptions import ValidationError
 from django.contrib.admin.options import IS_POPUP_VAR, TO_FIELD_VAR
 from django.contrib.admin.utils import unquote, quote
 from django.contrib import admin
@@ -14,7 +15,7 @@ from django.db import transaction
 from django.forms.models import _get_foreign_key
 from django.http import HttpResponseRedirect
 from django.shortcuts import get_object_or_404
-from django.template.response import SimpleTemplateResponse, TemplateResponse
+from django.template.response import TemplateResponse
 from django.utils.decorators import method_decorator
 from django.utils.functional import cached_property
 from django.utils.html import format_html
@@ -22,11 +23,10 @@ from django.utils.http import urlencode, urlquote
 from django.utils.translation import ugettext as _
 from django.views.decorators.csrf import csrf_protect
 from django.urls import Resolver404, get_script_prefix, resolve, reverse
-from .forms import get_form
 
 csrf_protect_m = method_decorator(csrf_protect)
 
-__all__ = ('SubAdmin', 'RootSubAdmin', 'SubAdminMixin', 'RootSubAdminMixin', 'SubAdminChangeList', 'SubAdminHelper')
+__all__ = ('SubAdmin', 'RootSubAdmin', 'SubAdminMixin', 'RootSubAdminMixin', 'SubAdminChangeList', 'SubAdminHelper', 'SubAdminFormMixin')
 
 
 class SubAdminHelper(object):
@@ -85,6 +85,38 @@ class SubAdminChangeList(ChangeList):
     def url_for_result(self, result):
         pk = getattr(result, self.pk_attname)
         return self.model_admin.reverse_url('change', *self.model_admin.get_base_url_args(self.request) + [pk])
+
+
+class SubAdminFormMixin(object):
+    def _post_clean(self):
+        validate_unique = self._validate_unique
+        self._validate_unique = False
+        super()._post_clean()
+
+        for fk_field, fk_instance in self._related_instances_fields.items():
+            setattr(self.instance, fk_field, fk_instance)
+
+        self._validate_unique = validate_unique
+        if self._validate_unique:
+            self.validate_unique()
+
+        
+    def validate_unique(self):
+        exclude = self._get_subadmin_validation_exclusions()
+
+        try:
+            self.instance.validate_unique(exclude=exclude)
+        except ValidationError as e:
+            self._update_errors(e)
+
+    def _get_subadmin_validation_exclusions(self):
+        return [f for f in self._get_validation_exclusions() if f not in self._related_instances_fields.keys()]
+
+    @cached_property
+    def _related_instances_fields(self):
+        return {
+            key: self._related_instances[key] for key in self._related_instances.keys() if key in self._meta.model._meta._forward_fields_map.keys()
+        }
 
 
 class SubAdminBase(object):
@@ -198,13 +230,17 @@ class SubAdminMixin(SubAdminBase):
         exclude.extend(request.subadmin.related_instances.keys())
         return list(set(exclude))
 
+    def prep_subadmin_form(self, request, form):
+        attrs = {'_related_instances': request.subadmin.related_instances}
+        return type(form)(form.__name__, (SubAdminFormMixin, form), attrs)
+
+    def get_form(self, request, obj=None, **kwargs):
+        form = super().get_form(request, obj, **kwargs)
+        return self.prep_subadmin_form(request, form)
+
     def get_changelist_form(self, request, **kwargs):
         form = super().get_changelist_form(request, **kwargs)
-        return get_form(form, self.model, request.subadmin.related_instances)
-
-    def get_form(self, request, obj=None, change=False, **kwargs):
-        form = super().get_form(request, obj, change, **kwargs)
-        return get_form(form, self.model, request.subadmin.related_instances)
+        return self.prep_subadmin_form(request, form)
 
     def get_base_viewname(self):
         if hasattr(self.parent_admin, 'get_base_viewname'):
@@ -408,7 +444,11 @@ class SubAdminMixin(SubAdminBase):
                 'obj': str(obj),
                 'new_value': str(new_value),
             })
-            return SimpleTemplateResponse('admin/popup_response.html', {
+            return TemplateResponse(request, self.popup_response_template or [
+                'admin/%s/%s/popup_response.html' % (opts.app_label, opts.model_name),
+                'admin/%s/popup_response.html' % opts.app_label,
+                'admin/popup_response.html',
+            ], {
                 'popup_response_data': popup_response_data,
             })
 
@@ -487,7 +527,11 @@ class SubAdminMixin(SubAdminBase):
                 'action': 'delete',
                 'value': str(obj_id),
             })
-            return SimpleTemplateResponse('admin/popup_response.html', {
+            return TemplateResponse(request, self.popup_response_template or [
+                'admin/%s/%s/popup_response.html' % (opts.app_label, opts.model_name),
+                'admin/%s/popup_response.html' % opts.app_label,
+                'admin/popup_response.html',
+            ], {
                 'popup_response_data': popup_response_data,
             })
 
