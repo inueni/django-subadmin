@@ -39,7 +39,6 @@ class SubAdminHelper(object):
         self.base_viewname = sub_admin.get_base_viewname()
         self.load_tree(sub_admin)
 
-
     def load_tree(self, sub_admin):
         parent_admin = sub_admin.parent_admin
         fk_lookup = sub_admin.fk_name
