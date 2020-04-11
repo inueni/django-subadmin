@@ -198,6 +198,10 @@ class SubAdminMixin(SubAdminBase):
         exclude.extend(request.subadmin.related_instances.keys())
         return list(set(exclude))
 
+    def get_changelist_form(self, request, **kwargs):
+        form = super().get_changelist_form(request, **kwargs)
+        return get_form(form, self.model, request.subadmin.related_instances)
+
     def get_form(self, request, obj=None, change=False, **kwargs):
         form = super().get_form(request, obj, change, **kwargs)
         return get_form(form, self.model, request.subadmin.related_instances)
