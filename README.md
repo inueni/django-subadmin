@@ -80,6 +80,14 @@ admin.site.register(MailingList, MailingListAdmin)
 
 With just a few lines of code you get a fully functional `ModelAdmin`, that will automatically pull in just the relevant related objects, based on `ForeignKey` relation between the two models, it will also auto set `ForeignKey` fields for nested relations and exclude them from change form when adding and editing objects on subadmin.
 
+
+### Caveats
+
+In order to properly support unique field validation (see #7), `SubAdmin` will inject a small mixin into the form. This is done in the `get_form` method and if you override this method in your own classes, make sure to call `super()` or `perp_subadmin_form()` directly. See `subadmin` source code for more details.
+
+Also, the injected mixin `SubAdminFormMixin` overrides `validate_unique` on the form. If your custom form overrides this method as well, have a look at `subadmin` source code for ways in which it differs from stock `ModelForm` implementation.
+
+
 ### Screenshots
 
 ![alt text](https://github.com/inueni/django-subadmin-example/raw/master/screenshots/subadmin_screenshot_1.png?raw=true)
@@ -99,7 +107,6 @@ With just a few lines of code you get a fully functional `ModelAdmin`, that will
 When adding or editing objects with `SubAdmin`, `ForeignKey` fields to parent instances are removed from the form and automatically set when saving. In this example `mailing_list` field is removed and value is set to parent `MailingList` instance _Mailing list 5_.
 
 > If you want to see it in action, or get a more in-depth look at how to set everything up, check out <https://github.com/inueni/django-subadmin-example>.
-
 
 ## Stability
 
