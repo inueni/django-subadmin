@@ -6,7 +6,7 @@ from io import open
 from setuptools import setup, find_packages
 
 
-version = '2.0.0'
+version = '2.0.1'
 
 def read_md(file_path):
     with open(file_path) as fp:
@@ -33,6 +33,7 @@ setup(
     long_description_content_type = 'text/markdown',
     packages = find_packages(),
     python_requires = '>=3',
+    setup_requires=['wheel'],
     include_package_data=True,
     zip_safe=False,
     classifiers=[
