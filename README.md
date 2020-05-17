@@ -4,7 +4,7 @@
 
 ### Suported Python and Django releases
 
-Current release of `django-subadmin` is **2.0.0** and it supports Python 3 only and Django versions 2.0 and up (including Django 3.0).
+Current release of `django-subadmin` is **2.0.1** and it supports Python 3 only and Django versions 2.0 and up (including Django 3.0).
 
 There is also a *legacy* **1.9.3** release with support for Python 2.7 and Django versions 1.9, 1.10 and 1.11. This release is **no longer maintained and supported**, but it's made available for legacy applications.
 
@@ -83,9 +83,9 @@ With just a few lines of code you get a fully functional `ModelAdmin`, that will
 
 ### Caveats
 
-In order to properly support unique field validation (see #7), `SubAdmin` will inject a small mixin into the form. This is done in the `get_form` method and if you override this method in your own classes, make sure to call `super()` or `perp_subadmin_form()` directly. See `subadmin` source code for more details.
+In order to properly support unique field validation (see Issue #7), `SubAdmin` will inject a small mixin into the form. This is done in the `get_form` method and if you override this method in your own classes, make sure to call `super()` or `perp_subadmin_form()` directly. See `subadmin` source code for more details.
 
-Also, the injected mixin `SubAdminFormMixin` overrides `validate_unique` on the form. If your custom form overrides this method as well, have a look at `subadmin` source code for ways in which it differs from stock `ModelForm` implementation.
+Also, the injected mixin `SubAdminFormMixin` overrides `validate_unique` on the form. If your custom form overrides this method as well, have a look at `subadmin` source code for ways in which it differs from stock `ModelForm` implementation and adjust your code as neccesarry.
 
 
 ### Screenshots
