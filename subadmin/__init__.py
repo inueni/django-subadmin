@@ -1,7 +1,7 @@
 import json
 from collections import OrderedDict
 from functools import partial, update_wrapper
-from urllib.parse import parse_qsl, urlparse, urlunparse
+from urllib.parse import parse_qsl, urlparse, urlunparse, quote
 
 from django.urls import path, re_path, include
 from django.core.exceptions import ValidationError
@@ -19,8 +19,8 @@ from django.template.response import TemplateResponse
 from django.utils.decorators import method_decorator
 from django.utils.functional import cached_property
 from django.utils.html import format_html
-from django.utils.http import urlencode, urlquote
-from django.utils.translation import ugettext as _
+from django.utils.http import urlencode
+from django.utils.translation import gettext as _
 from django.views.decorators.csrf import csrf_protect
 from django.urls import Resolver404, get_script_prefix, resolve, reverse
 
@@ -100,7 +100,7 @@ class SubAdminFormMixin(object):
         if self._validate_unique:
             self.validate_unique()
 
-        
+
     def validate_unique(self):
         exclude = self._get_subadmin_validation_exclusions()
 
