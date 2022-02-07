@@ -1,6 +1,6 @@
 from django.urls import reverse
 from django.contrib.admin.templatetags.admin_modify import submit_row
-from django.utils.encoding import force_text
+from django.utils.encoding import force_str
 from django.template import Library
 
 
@@ -14,7 +14,7 @@ def subadmin_breadcrumbs(context):
         'name': request.subadmin.root['object']._meta.app_config.verbose_name,
         'url': reverse('admin:app_list', kwargs={'app_label': request.subadmin.root['object']._meta.app_label})
     }
-    
+
     breadcrumbs =[]
     view_args = list(request.subadmin.view_args)
 
@@ -30,12 +30,12 @@ def subadmin_breadcrumbs(context):
             'url': adm.reverse_url('changelist', *view_args[:i]),
             'has_change_permission': adm.has_change_permission(request),
         }, {
-            'name': force_text(obj),
+            'name': force_str(obj),
             'url': adm.reverse_url('change', *view_args[:i + 1]),
             'has_change_permission': adm.has_change_permission(request, obj),
         }])
         i += 1
-    
+
     return {
         'root': root,
         'breadcrumbs': breadcrumbs,
@@ -50,7 +50,7 @@ def subadmin_url(context, viewname, *args, **kwargs):
 
 @register.inclusion_tag('subadmin/submit_line.html', takes_context=True)
 def subadmin_submit_row(context):
-    ctx = submit_row(context)    
+    ctx = submit_row(context)
     ctx.update({
         'request': context['request']
     })
