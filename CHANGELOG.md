@@ -1,5 +1,8 @@
 # Changelog
 
+## [3.2.0] - 2021-06-28
+ - Django 4 compatibility (courtesy of @cyberbudy).
+
 ## [2.0.1] - 2020-04-12
  - _Fix_: Properly validate unique_together. (Issue #7)
 
@@ -21,6 +24,8 @@
 ## 1.9.0 - 2017-11-13
 - Initial release
 
+[3.2.0]: https://github.com/inueni/django-subadmin/compare/v2.0.1...v3.2.0
+[2.0.1]: https://github.com/inueni/django-subadmin/compare/v2.0.0...v2.0.1
 [2.0.0]: https://github.com/inueni/django-subadmin/compare/v1.9.3...v2.0.0
 [1.9.3]: https://github.com/inueni/django-subadmin/compare/v1.9.2...v1.9.3
 [1.9.2]: https://github.com/inueni/django-subadmin/compare/v1.9.1...v1.9.2
