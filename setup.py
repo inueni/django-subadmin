@@ -6,7 +6,7 @@ from io import open
 from setuptools import setup, find_packages
 
 
-version = '2.0.1'
+version = '3.2.0'
 
 def read_md(file_path):
     with open(file_path) as fp:
@@ -46,9 +46,7 @@ setup(
         'Programming Language :: Python',
         "Programming Language :: Python :: 3",
         'Framework :: Django',
-        'Framework :: Django :: 2.0',
-        'Framework :: Django :: 2.1',
-        'Framework :: Django :: 2.2',
-        'Framework :: Django :: 3.0',
+        'Framework :: Django :: 3.2',
+        'Framework :: Django :: 4',
     ]
 )
