@@ -24,12 +24,12 @@
 ## 1.9.0 - 2017-11-13
 - Initial release
 
-[3.2.0]: https://github.com/inueni/django-subadmin/compare/v2.0.1...v3.2.0
-[2.0.1]: https://github.com/inueni/django-subadmin/compare/v2.0.0...v2.0.1
-[2.0.0]: https://github.com/inueni/django-subadmin/compare/v1.9.3...v2.0.0
-[1.9.3]: https://github.com/inueni/django-subadmin/compare/v1.9.2...v1.9.3
-[1.9.2]: https://github.com/inueni/django-subadmin/compare/v1.9.1...v1.9.2
-[1.9.1]: https://github.com/inueni/django-subadmin/compare/v1.9.0...v1.9.1
+[3.2.0]: https://github.com/inueni/django-subadmin/compare/2.0.1...3.2.0
+[2.0.1]: https://github.com/inueni/django-subadmin/compare/2.0.0...2.0.1
+[2.0.0]: https://github.com/inueni/django-subadmin/compare/1.9.3...2.0.0
+[1.9.3]: https://github.com/inueni/django-subadmin/compare/1.9.2...1.9.3
+[1.9.2]: https://github.com/inueni/django-subadmin/compare/1.9.1...1.9.2
+[1.9.1]: https://github.com/inueni/django-subadmin/compare/1.9.0...1.9.1
 [Issue #2]: https://github.com/inueni/django-subadmin/issues/2
 [Issue #3]: https://github.com/inueni/django-subadmin/issues/3
 [Issue #4]: https://github.com/inueni/django-subadmin/issues/4
