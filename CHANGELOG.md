@@ -1,6 +1,9 @@
 # Changelog
 
 ## [3.2.0] - 2021-06-28
+ - _Fix_: Django 4 compatibility bug
+
+## [3.2.0] - 2021-06-28
  - Django 4 compatibility (courtesy of @cyberbudy).
 
 ## [2.0.1] - 2020-04-12
@@ -24,6 +27,7 @@
 ## 1.9.0 - 2017-11-13
 - Initial release
 
+[3.2.1]: https://github.com/inueni/django-subadmin/compare/3.2.0...3.2.1
 [3.2.0]: https://github.com/inueni/django-subadmin/compare/2.0.1...3.2.0
 [2.0.1]: https://github.com/inueni/django-subadmin/compare/2.0.0...2.0.1
 [2.0.0]: https://github.com/inueni/django-subadmin/compare/1.9.3...2.0.0

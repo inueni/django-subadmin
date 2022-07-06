@@ -6,7 +6,7 @@ from io import open
 from setuptools import setup, find_packages
 
 
-version = '3.2.0'
+version = '3.2.1'
 
 def read_md(file_path):
     with open(file_path) as fp:
