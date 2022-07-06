@@ -1,7 +1,7 @@
 import json
 from collections import OrderedDict
 from functools import partial, update_wrapper
-from urllib.parse import parse_qsl, urlparse, urlunparse, quote
+from urllib.parse import parse_qsl, urlparse, urlunparse
 
 from django.urls import path, re_path, include
 from django.core.exceptions import ValidationError
@@ -369,7 +369,7 @@ class SubAdminMixin(SubAdminBase):
         obj_url = self.reverse_url('change', *url_args + [quote(pk_value)])
 
         if self.has_change_permission(request, obj):
-            obj_repr = format_html('<a href="{}">{}</a>', urlquote(obj_url), obj)
+            obj_repr = format_html('<a href="{}">{}</a>', quote(obj_url), obj)
         else:
             obj_repr = str(obj)
 
@@ -458,7 +458,7 @@ class SubAdminMixin(SubAdminBase):
 
         msg_dict = {
             'name': str(opts.verbose_name),
-            'obj': format_html('<a href="{}">{}</a>', urlquote(request.path), obj),
+            'obj': format_html('<a href="{}">{}</a>', quote(request.path), obj),
         }
         if "_continue" in request.POST:
             msg = format_html(
