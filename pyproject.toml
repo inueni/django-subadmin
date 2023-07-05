@@ -9,7 +9,7 @@ authors = [
 ]
 description = "A special kind of ModelAdmin that allows it to be nested within another ModelAdmin"
 readme = "README.md"
-equires-python = ">=3.6"
+requires-python = ">=3.6"
 keywords = ["django", "admin", "modeladmin", "foreignkey", "related field"]
 license = {text = "MIT"}
 classifiers=[
