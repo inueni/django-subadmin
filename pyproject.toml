@@ -4,6 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-subadmin"
+dynamic = ["version"]
 authors = [
     {name = "Mitja Pagon", email = "mitja@inueni.com"},
 ]
