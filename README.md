@@ -4,9 +4,7 @@
 
 ### Suported Python and Django releases
 
-Current release of `django-subadmin` is **2.0.1** and it supports Python 3 only and Django versions 2.0 and up (including Django 3.0).
-
-There is also a *legacy* **1.9.3** release with support for Python 2.7 and Django versions 1.9, 1.10 and 1.11. This release is **no longer maintained and supported**, but it's made available for legacy applications.
+Current release of `django-subadmin` supports Django versions 3.2 and up (including Django 4).
 
 #### Verison numbering
 

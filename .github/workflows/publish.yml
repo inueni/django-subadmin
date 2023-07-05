@@ -1,0 +1,41 @@
+name: Build and publish to PyPI
+on:
+  release:
+    types: [published]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+      - name: Install pypa/build
+        run: python3 -m pip install --upgrade build
+      - name: Build package
+        run: python3 -m build --sdist --wheel --outdir dist/ .
+      - name: Upload dist as artifact
+        uses: actions/upload-artifact@v3
+        with:
+          name: dist
+          path: ./dist
+          retention-days: 3
+
+  pypi-publish:
+    needs: ['build']
+    runs-on: ubuntu-latest
+    environment:
+      name: pypi
+      url: https://pypi.org/p/django-subadmin
+    permissions:
+      id-token: write
+    steps:
+      - name: Download artifact as dist
+        uses: actions/download-artifact@v3
+      - name: Publish package
+        uses: pypa/gh-action-pypi-publish@release/v1
