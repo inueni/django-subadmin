@@ -33,3 +33,4 @@ classifiers=[
 "Changelog" = "https://github.com/inueni/django-subadmin/releases"
 
 [tool.setuptools_scm]
+local_scheme = "no-local-version"
