@@ -4,12 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "django-subadmin"
+dynamic = ["version"]
 authors = [
     {name = "Mitja Pagon", email = "mitja@inueni.com"},
 ]
 description = "A special kind of ModelAdmin that allows it to be nested within another ModelAdmin"
 readme = "README.md"
-equires-python = ">=3.6"
+requires-python = ">=3.6"
 keywords = ["django", "admin", "modeladmin", "foreignkey", "related field"]
 license = {text = "MIT"}
 classifiers=[
@@ -32,3 +33,4 @@ classifiers=[
 "Changelog" = "https://github.com/inueni/django-subadmin/releases"
 
 [tool.setuptools_scm]
+local_scheme = "no-local-version"
