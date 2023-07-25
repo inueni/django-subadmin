@@ -28,11 +28,11 @@ def subadmin_breadcrumbs(context):
         breadcrumbs.extend([{
             'name': obj._meta.verbose_name_plural,
             'url': adm.reverse_url('changelist', *view_args[:i]),
-            'has_change_permission': adm.has_change_permission(request),
+            'has_view_permission': adm.has_view_permission(request),
         }, {
             'name': force_str(obj),
             'url': adm.reverse_url('change', *view_args[:i + 1]),
-            'has_change_permission': adm.has_change_permission(request, obj),
+            'has_view_permission': adm.has_view_permission(request, obj),
         }])
         i += 1
 
