@@ -2,7 +2,7 @@
 
 `django-subadmin` provides a special kind of `ModelAdmin`, called `SubAdmin`, that allows it to be nested within another `ModelAdmin` instance. Similar to django's built-in `InlineModelAdmin`, it allows editing of related objects, but instead of doing it inline, it gives you a full `ModelAdmin` as sub-admin of parent `ModelAdmin`. Like `InlineModelAdmin` it works on models related by `ForeignKey`. Multiple `SubAdmin` instances can be nested within a single `ModelAdmin` or `SubAdmin` allowing for multi-level nesting.
 
-### Suported Python and Django releases
+### Supported Python and Django releases
 
 Current release of `django-subadmin` supports Django versions 3.2 and up (including Django 4).
 
@@ -46,7 +46,7 @@ class Subscriber(models.Model):
     username = models.CharField(max_length=100)
 ```
 
-If you wish to display only subscribers belonging to a particular mailing list in django admin, your only options is to use `InlineModelAdmin`, which is not very practical when dealing with large number of related objects, plus, you loose all the cool functionality of `ModelAdmin` like searching, filtering, pagination, etc ...
+If you wish to display only subscribers belonging to a particular mailing list in django admin, your only option is to use `InlineModelAdmin`, which is not very practical when dealing with a large number of related objects, plus, you loose all the cool functionality of `ModelAdmin` like searching, filtering, pagination, etc ...
 
 This is where `SubAdmin` comes in.
 
@@ -83,14 +83,14 @@ With just a few lines of code you get a fully functional `ModelAdmin`, that will
 
 In order to properly support unique field validation (see Issue #7), `SubAdmin` will inject a small mixin into the form. This is done in the `get_form` method and if you override this method in your own classes, make sure to call `super()` or `perp_subadmin_form()` directly. See `subadmin` source code for more details.
 
-Also, the injected mixin `SubAdminFormMixin` overrides `validate_unique` on the form. If your custom form overrides this method as well, have a look at `subadmin` source code for ways in which it differs from stock `ModelForm` implementation and adjust your code as neccesarry.
+Also, the injected mixin `SubAdminFormMixin` overrides `validate_unique` on the form. If your custom form overrides this method as well, have a look at `subadmin` source code for ways in which it differs from the stock `ModelForm` implementation and adjust your code as necessary.
 
 
 ### Screenshots
 
 ![alt text](https://github.com/inueni/django-subadmin-example/raw/master/screenshots/subadmin_screenshot_1.png?raw=true)
 
- `SubAdmin` instances are accesible from edit view of the `ModelAdmin` instance they are nested in. In the screenshot above you can see links to _Subscribers_ and _Messages_ subadmins (marked with red rectangle) for `MailingList` instance _Mailing list 5_.
+ `SubAdmin` instances are accessible from edit view of the `ModelAdmin` instance they are nested in. In the screenshot above you can see links to _Subscribers_ and _Messages_ subadmins (marked with red rectangle) for `MailingList` instance _Mailing list 5_.
 
 ---
 
