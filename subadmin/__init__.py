@@ -369,7 +369,7 @@ class SubAdminMixin(SubAdminBase):
         obj_url = self.reverse_url('change', *url_args + [quote(pk_value)])
 
         if self.has_change_permission(request, obj):
-            obj_repr = format_html('<a href="{}">{}</a>', quote(obj_url), obj)
+            obj_repr = format_html('<a href="{}">{}</a>', obj_url, obj)
         else:
             obj_repr = str(obj)
 
@@ -458,7 +458,7 @@ class SubAdminMixin(SubAdminBase):
 
         msg_dict = {
             'name': str(opts.verbose_name),
-            'obj': format_html('<a href="{}">{}</a>', quote(request.path), obj),
+            'obj': format_html('<a href="{}">{}</a>', request.path, obj),
         }
         if "_continue" in request.POST:
             msg = format_html(
