@@ -36,6 +36,6 @@ jobs:
       id-token: write
     steps:
       - name: Download artifact as dist
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4.1.7
       - name: Publish package
         uses: pypa/gh-action-pypi-publish@release/v1
