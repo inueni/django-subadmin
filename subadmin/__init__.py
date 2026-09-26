@@ -6,7 +6,7 @@ from urllib.parse import parse_qsl, quote as urlquote, unquote as urlunquote, ur
 
 from django.conf import settings
 from django.urls import path, re_path, include
-from django.core.exceptions import FieldDoesNotExist, NON_FIELD_ERRORS, ValidationError
+from django.core.exceptions import FieldDoesNotExist, NON_FIELD_ERRORS, PermissionDenied, ValidationError
 from django.contrib.admin.options import IS_POPUP_VAR, TO_FIELD_VAR
 from django.contrib.admin.utils import unquote, quote
 from django.contrib import admin
@@ -33,12 +33,23 @@ class SubAdminHelper(object):
         self.object_id = object_id
         self.view_args = view_args
         self.base_viewname = sub_admin.get_base_viewname()
+        nested_model = sub_admin.model
         fk_lookup = sub_admin.fk_name
 
         for parent in self.parents:
             obj = parent['object']
             self.lookup_kwargs[fk_lookup] = obj
-            self.related_instances[sub_admin.fk_name] = obj
+            try:
+                field = nested_model._meta.get_field(sub_admin.fk_name)
+            except FieldDoesNotExist:
+                pass
+            else:
+                if (
+                    field.concrete
+                    and (field.many_to_one or field.one_to_one)
+                    and isinstance(obj, field.remote_field.model)
+                ):
+                    self.related_instances.setdefault(sub_admin.fk_name, obj)
 
             sub_admin = parent['admin']
             if getattr(sub_admin, 'parent_admin', None):
@@ -193,6 +204,8 @@ class SubAdminMixin(SubAdminBase):
                 del parent_request.subadmin
 
             obj = sub_admin.get_parent_instance(parent_request, parent_id)
+            if not parent_admin.has_view_or_change_permission(parent_request, obj):
+                raise PermissionDenied
             loaded.append({'admin': parent_admin, 'object': obj})
 
         return self.subadmin_helper_class(
