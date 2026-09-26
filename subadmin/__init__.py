@@ -12,21 +12,15 @@ from django.contrib.admin.utils import unquote, quote
 from django.contrib import admin
 from django.contrib import messages
 from django.contrib.admin.views.main import ChangeList
-from django.contrib.admin.actions import delete_selected
-from django.db import transaction
 from django.forms.models import _get_foreign_key
 from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
-from django.utils.decorators import method_decorator
 from django.utils.functional import cached_property
 from django.utils.html import format_html
 from django.utils.http import urlencode
 from django.utils.translation import gettext as _
-from django.views.decorators.csrf import csrf_protect
 from django.urls import Resolver404, get_script_prefix, resolve, reverse
-
-csrf_protect_m = method_decorator(csrf_protect)
 
 __all__ = ('SubAdmin', 'RootSubAdmin', 'SubAdminMixin', 'RootSubAdminMixin', 'SubAdminChangeList', 'SubAdminHelper', 'SubAdminFormMixin')
 
@@ -81,7 +75,8 @@ class SubAdminChangeList(ChangeList):
 
     def url_for_result(self, result):
         pk = getattr(result, self.pk_attname)
-        return self.model_admin.reverse_url('change', *self.model_admin.get_base_url_args(self.request) + [pk])
+        url_args = self.model_admin.get_base_url_args(self.request) + [pk]
+        return self.model_admin.reverse_url('change', *[quote(arg) for arg in url_args])
 
 
 class SubAdminFormMixin(object):
@@ -143,7 +138,7 @@ class SubAdminBase(object):
                     url_args = modeladmin.get_base_url_args(request) or [obj.pk]
                     subadmin_links.append({
                         'name': modeladmin.model._meta.verbose_name_plural,
-                        'url': modeladmin.reverse_url('changelist', *url_args),
+                        'url': modeladmin.reverse_url('changelist', *[quote(arg) for arg in url_args]),
                     })
 
         context.update({'subadmin_links': subadmin_links})
@@ -204,20 +199,20 @@ class SubAdminMixin(SubAdminBase):
             self, view_args, reversed(loaded), object_id=object_id
         )
 
-    def get_model_perms(self, request):
-        return super().get_model_perms(request)
-
     def get_actions(self, request):
         actions = super().get_actions(request)
 
-        def subadmin_delete_selected(modeladmin, req, qs):
-            response = delete_selected(modeladmin, req, qs)
-            if response:
-                response.context_data.update(self.context_add_parent_data(request))
-            return response
-
         if 'delete_selected' in actions:
-            actions['delete_selected'] = (subadmin_delete_selected, 'delete_selected', actions['delete_selected'][2])
+            action, name, description = actions['delete_selected']
+
+            def subadmin_delete_selected(modeladmin, req, qs):
+                response = action(modeladmin, req, qs)
+                context_data = getattr(response, 'context_data', None)
+                if context_data is not None:
+                    context_data.update(self.context_add_parent_data(req))
+                return response
+
+            actions['delete_selected'] = (subadmin_delete_selected, name, description)
 
         return actions
 
@@ -228,6 +223,7 @@ class SubAdminMixin(SubAdminBase):
         def wrap(view):
             def wrapper(*args, **kwargs):
                 return self.admin_site.admin_view(view)(*args, **kwargs)
+            wrapper.model_admin = self
             return update_wrapper(wrapper, view)
 
         base_viewname = self.get_base_viewname()
@@ -355,7 +351,6 @@ class SubAdminMixin(SubAdminBase):
         parsed_url[3] = urlencode(merged_qs)
         return urlunsplit(parsed_url)
 
-    @csrf_protect_m
     def changelist_view(self, request, *args, **kwargs):
         extra_context = kwargs.get('extra_context')
         request.subadmin = self.get_subadmin_helper(request, args)
@@ -375,8 +370,6 @@ class SubAdminMixin(SubAdminBase):
         extra_context = self.context_add_parent_data(request, extra_context)
         return super().change_view(request, object_id, form_url, extra_context)
 
-    @csrf_protect_m
-    @transaction.atomic
     def delete_view(self, request, *args, **kwargs):
         extra_context = kwargs.get('extra_context')
         object_id = args[-1]
@@ -400,7 +393,7 @@ class SubAdminMixin(SubAdminBase):
         if "_saveasnew" in request.POST:
             url_args = url_args[:-1]
 
-        obj_url = self.reverse_url('change', *url_args + [quote(obj.pk)])
+        obj_url = self.reverse_url('change', *[quote(arg) for arg in url_args + [obj.pk]])
 
         if self.has_change_permission(request, obj):
             obj_repr = format_html('<a href="{}">{}</a>', urlquote(obj_url), obj)
@@ -508,7 +501,8 @@ class SubAdminMixin(SubAdminBase):
             **msg_dict
         )
         self.message_user(request, msg, messages.SUCCESS)
-        redirect_url = self.reverse_url('add', *self.get_base_url_args(request)[:-1])
+        url_args = self.get_base_url_args(request)[:-1]
+        redirect_url = self.reverse_url('add', *[quote(arg) for arg in url_args])
         redirect_url = self.add_preserved_filters(
             {'preserved_filters': preserved_filters, 'preserved_qsl': preserved_qsl, 'opts': opts},
             redirect_url
@@ -520,7 +514,7 @@ class SubAdminMixin(SubAdminBase):
             url_args = self.get_base_url_args(request)
             if request.subadmin.object_id is not None:
                 url_args = url_args[:-1]
-            post_url = self.reverse_url('changelist', *url_args)
+            post_url = self.reverse_url('changelist', *[quote(arg) for arg in url_args])
             preserved_filters = self.get_preserved_filters(request)
             post_url = self.add_preserved_filters({'preserved_filters': preserved_filters, 'opts': self.opts}, post_url)
         else:
@@ -542,7 +536,8 @@ class SubAdminMixin(SubAdminBase):
         )
 
         if self.has_change_permission(request, None):
-            post_url = self.reverse_url('changelist', *self.get_base_url_args(request)[:-1])
+            url_args = self.get_base_url_args(request)[:-1]
+            post_url = self.reverse_url('changelist', *[quote(arg) for arg in url_args])
             preserved_filters = self.get_preserved_filters(request)
             post_url = self.add_preserved_filters(
                 {'preserved_filters': preserved_filters, 'opts': opts}, post_url

@@ -1,4 +1,5 @@
 from django.urls import reverse
+from django.contrib.admin.utils import quote
 from django.contrib.admin.templatetags.admin_modify import submit_row
 from django.utils.encoding import force_str
 from django.template import Library
@@ -53,7 +54,7 @@ def subadmin_url(context, viewname, *args, **kwargs):
     view_args = subadmin.base_url_args[:-1] if subadmin.object_id else subadmin.base_url_args
     return reverse(
         'admin:%s_%s' % (subadmin.base_viewname, viewname),
-        args=view_args + list(args),
+        args=[quote(arg) for arg in view_args] + list(args),
         kwargs=kwargs,
         current_app=getattr(request, 'current_app', None),
     )

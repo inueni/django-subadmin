@@ -3,13 +3,14 @@ from unittest.mock import patch
 from urllib.parse import parse_qs, urlsplit
 
 from django.contrib import admin
+from django.contrib.admin.utils import quote
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
 from django.test import TestCase
 from django.urls import reverse
 
-from .testapp.models import Child, Grandchild, Parent
+from .testapp.models import Child, Grandchild, Parent, StringChild, StringParent
 
 
 class NestedAdminTests(TestCase):
@@ -155,3 +156,53 @@ class NestedAdminTests(TestCase):
         )
         self.assertEqual(response.status_code, 200)
         self.assertEqual(response.context["parent_instance"], self.parent)
+
+    def test_string_primary_key_navigation(self):
+        parent = StringParent.objects.create(id="parent_2Fid", name="String parent")
+        child = StringChild.objects.create(id="child_2Fid", parent=parent, name="String child")
+        parent_id = quote(parent.pk)
+        child_id = quote(child.pk)
+        parent_url = reverse("admin:testapp_stringparent_change", args=[parent_id])
+        changelist_url = reverse("admin:testapp_stringparent_stringchild_changelist", args=[parent_id])
+        add_url = reverse("admin:testapp_stringparent_stringchild_add", args=[parent_id])
+        change_url = reverse(
+            "admin:testapp_stringparent_stringchild_change", args=[parent_id, child_id]
+        )
+        history_url = reverse(
+            "admin:testapp_stringparent_stringchild_history", args=[parent_id, child_id]
+        )
+        delete_url = reverse(
+            "admin:testapp_stringparent_stringchild_delete", args=[parent_id, child_id]
+        )
+
+        self.assertContains(self.client.get(parent_url), changelist_url)
+        changelist = self.client.get(changelist_url)
+        self.assertContains(changelist, change_url)
+        self.assertContains(changelist, add_url)
+        change_form = self.client.get(change_url)
+        self.assertContains(change_form, changelist_url)
+        self.assertContains(change_form, history_url)
+        self.assertContains(change_form, delete_url)
+        self.assertEqual(self.client.get(history_url).status_code, 200)
+        self.assertEqual(self.client.get(delete_url).status_code, 200)
+
+        response = self.client.post(
+            change_url, {"id": child.pk, "name": "Renamed", "_addanother": "1"}
+        )
+        self.assertRedirects(response, add_url, fetch_redirect_response=False)
+        added_id = "added_2Fid"
+        response = self.client.post(
+            add_url, {"id": added_id, "name": "Added", "_continue": "1"}
+        )
+        added_url = reverse(
+            "admin:testapp_stringparent_stringchild_change", args=[parent_id, quote(added_id)]
+        )
+        self.assertRedirects(response, added_url, fetch_redirect_response=False)
+        self.assertTrue(StringChild.objects.filter(pk=added_id, parent=parent).exists())
+
+        response = self.client.post(
+            added_url, {"id": added_id, "name": "Added", "_save": "1"}
+        )
+        self.assertRedirects(response, changelist_url, fetch_redirect_response=False)
+        response = self.client.post(delete_url, {"post": "yes"})
+        self.assertRedirects(response, changelist_url, fetch_redirect_response=False)

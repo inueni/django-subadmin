@@ -2,7 +2,7 @@ from django.contrib import admin
 
 from subadmin import RootSubAdmin, SubAdmin
 
-from .models import Child, Grandchild, Parent
+from .models import Child, Grandchild, Parent, StringChild, StringParent
 
 
 class GrandchildAdmin(SubAdmin):
@@ -17,3 +17,12 @@ class ChildAdmin(SubAdmin):
 @admin.register(Parent)
 class ParentAdmin(RootSubAdmin):
     subadmins = [ChildAdmin]
+
+
+class StringChildAdmin(SubAdmin):
+    model = StringChild
+
+
+@admin.register(StringParent)
+class StringParentAdmin(RootSubAdmin):
+    subadmins = [StringChildAdmin]
