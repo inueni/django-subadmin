@@ -14,7 +14,7 @@
 {% if has_add_permission %}
 <li>
 {% subadmin_url 'add' as add_url %}
-<a href="{% add_preserved_filters add_url is_popup to_field %}" class="addlink">
+<a href="{% subadmin_add_preserved_filters add_url is_popup to_field %}" class="addlink">
 {% blocktrans with cl.opts.verbose_name as name %}Add {{ name }}{% endblocktrans %}
 </a>
 </li>

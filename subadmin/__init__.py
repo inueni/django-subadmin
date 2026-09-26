@@ -2,7 +2,7 @@ import json
 from copy import copy
 from collections import OrderedDict
 from functools import partial, update_wrapper
-from urllib.parse import parse_qsl, urlparse, urlunparse
+from urllib.parse import parse_qsl, quote as urlquote, unquote as urlunquote, urlsplit, urlunsplit
 
 from django.conf import settings
 from django.urls import path, re_path, include
@@ -312,15 +312,19 @@ class SubAdminMixin(SubAdminBase):
     def add_preserved_filters(self, context, url, popup=False, to_field=None):
         opts = context.get('opts')
         preserved_filters = context.get('preserved_filters')
+        preserved_qsl = context.get('preserved_qsl')
 
-        parsed_url = list(urlparse(url))
-        parsed_qs = dict(parse_qsl(parsed_url[4]))
+        parsed_url = list(urlsplit(url))
+        parsed_qs = dict(parse_qsl(parsed_url[3]))
         merged_qs = dict()
+
+        if preserved_qsl:
+            merged_qs.update(preserved_qsl)
 
         if opts and preserved_filters:
             preserved_filters = dict(parse_qsl(preserved_filters))
 
-            match_url = '/%s' % url.partition(get_script_prefix())[2]
+            match_url = '/%s' % urlunquote(url).partition(get_script_prefix())[2]
             try:
                 match = resolve(match_url)
             except Resolver404:
@@ -342,8 +346,8 @@ class SubAdminMixin(SubAdminBase):
 
         merged_qs.update(parsed_qs)
 
-        parsed_url[4] = urlencode(merged_qs)
-        return urlunparse(parsed_url)
+        parsed_url[3] = urlencode(merged_qs)
+        return urlunsplit(parsed_url)
 
     @csrf_protect_m
     def changelist_view(self, request, *args, **kwargs):
@@ -383,17 +387,17 @@ class SubAdminMixin(SubAdminBase):
 
     def response_add(self, request, obj, post_url_continue=None):
         opts = obj._meta
-        pk_value = obj._get_pk_val()
         preserved_filters = self.get_preserved_filters(request)
+        preserved_qsl = self._get_preserved_qsl(request, preserved_filters)
         url_args = self.get_base_url_args(request)
 
         if "_saveasnew" in request.POST:
             url_args = url_args[:-1]
 
-        obj_url = self.reverse_url('change', *url_args + [quote(pk_value)])
+        obj_url = self.reverse_url('change', *url_args + [quote(obj.pk)])
 
         if self.has_change_permission(request, obj):
-            obj_repr = format_html('<a href="{}">{}</a>', quote(obj_url), obj)
+            obj_repr = format_html('<a href="{}">{}</a>', urlquote(obj_url), obj)
         else:
             obj_repr = str(obj)
 
@@ -425,15 +429,14 @@ class SubAdminMixin(SubAdminBase):
                 "_saveasnew" in request.POST and self.save_as_continue and
                 self.has_change_permission(request, obj)
         ):
-            msg = format_html(
-                _('The {name} "{obj}" was added successfully. You may edit it again below.'),
-                **msg_dict
-            )
-            self.message_user(request, msg, messages.SUCCESS)
+            msg = _('The {name} "{obj}" was added successfully.')
+            if self.has_change_permission(request, obj):
+                msg += ' ' + _('You may edit it again below.')
+            self.message_user(request, format_html(msg, **msg_dict), messages.SUCCESS)
             if post_url_continue is None:
                 post_url_continue = obj_url
             post_url_continue = self.add_preserved_filters(
-                {'preserved_filters': preserved_filters, 'opts': opts},
+                {'preserved_filters': preserved_filters, 'preserved_qsl': preserved_qsl, 'opts': opts},
                 post_url_continue
             )
             return HttpResponseRedirect(post_url_continue)
@@ -445,7 +448,10 @@ class SubAdminMixin(SubAdminBase):
             )
             self.message_user(request, msg, messages.SUCCESS)
             redirect_url = request.path
-            redirect_url = self.add_preserved_filters({'preserved_filters': preserved_filters, 'opts': opts}, redirect_url)
+            redirect_url = self.add_preserved_filters(
+                {'preserved_filters': preserved_filters, 'preserved_qsl': preserved_qsl, 'opts': opts},
+                redirect_url
+            )
             return HttpResponseRedirect(redirect_url)
 
         else:
@@ -457,108 +463,69 @@ class SubAdminMixin(SubAdminBase):
             return self.response_post_save_add(request, obj)
 
     def response_change(self, request, obj):
-        opts = self.model._meta
         if IS_POPUP_VAR in request.POST:
-            to_field = request.POST.get(TO_FIELD_VAR)
-            attr = str(to_field) if to_field else obj._meta.pk.attname
-            value = unquote(request.subadmin.object_id)
-            new_value = obj.serializable_value(attr)
-            popup_response_data = json.dumps({
-                'action': 'change',
-                'value': str(value),
-                'obj': str(obj),
-                'new_value': str(new_value),
-            })
-            return TemplateResponse(request, self.popup_response_template or [
-                'admin/%s/%s/popup_response.html' % (opts.app_label, opts.model_name),
-                'admin/%s/popup_response.html' % opts.app_label,
-                'admin/popup_response.html',
-            ], {
-                'popup_response_data': popup_response_data,
-            })
+            return self._response_change_popup(request, obj)
+        if '_addanother' in request.POST:
+            return self._response_change_add_another(request, obj)
+        return super().response_change(request, obj)
 
-        pk_value = obj._get_pk_val()
+    def _response_change_popup(self, request, obj):
+        opts = self.model._meta
+        to_field = request.POST.get(TO_FIELD_VAR)
+        attr = str(to_field) if to_field else obj._meta.pk.attname
+        value = unquote(request.subadmin.object_id)
+        new_value = obj.serializable_value(attr)
+        popup_response_data = json.dumps({
+            'action': 'change',
+            'value': str(value),
+            'obj': str(obj),
+            'new_value': str(new_value),
+        })
+        return TemplateResponse(request, self.popup_response_template or [
+            'admin/%s/%s/popup_response.html' % (opts.app_label, opts.model_name),
+            'admin/%s/popup_response.html' % opts.app_label,
+            'admin/popup_response.html',
+        ], {
+            'popup_response_data': popup_response_data,
+        })
+
+    def _response_change_add_another(self, request, obj):
+        opts = self.model._meta
         preserved_filters = self.get_preserved_filters(request)
-
+        preserved_qsl = self._get_preserved_qsl(request, preserved_filters)
         msg_dict = {
             'name': str(opts.verbose_name),
-            'obj': format_html('<a href="{}">{}</a>', quote(request.path), obj),
+            'obj': format_html('<a href="{}">{}</a>', urlquote(request.path), obj),
         }
-        if "_continue" in request.POST:
-            msg = format_html(
-                _('The {name} "{obj}" was changed successfully. You may edit it again below.'),
-                **msg_dict
-            )
-            self.message_user(request, msg, messages.SUCCESS)
-            redirect_url = request.path
-            redirect_url = self.add_preserved_filters({'preserved_filters': preserved_filters, 'opts': opts}, redirect_url)
-            return HttpResponseRedirect(redirect_url)
+        msg = format_html(
+            _('The {name} "{obj}" was changed successfully. You may add another {name} below.'),
+            **msg_dict
+        )
+        self.message_user(request, msg, messages.SUCCESS)
+        redirect_url = self.reverse_url('add', *self.get_base_url_args(request)[:-1])
+        redirect_url = self.add_preserved_filters(
+            {'preserved_filters': preserved_filters, 'preserved_qsl': preserved_qsl, 'opts': opts},
+            redirect_url
+        )
+        return HttpResponseRedirect(redirect_url)
 
-        elif "_saveasnew" in request.POST:
-            msg = format_html(
-                _('The {name} "{obj}" was added successfully. You may edit it again below.'),
-                **msg_dict
-            )
-            self.message_user(request, msg, messages.SUCCESS)
-            redirect_url = self.reverse_url('change', *self.get_base_url_args(request))
-            redirect_url = self.add_preserved_filters({'preserved_filters': preserved_filters, 'opts': opts}, redirect_url)
-            return HttpResponseRedirect(redirect_url)
-
-        elif "_addanother" in request.POST:
-            msg = format_html(
-                _('The {name} "{obj}" was changed successfully. You may add another {name} below.'),
-                **msg_dict
-            )
-            self.message_user(request, msg, messages.SUCCESS)
-            redirect_url = self.reverse_url('add', *self.get_base_url_args(request)[:-1])
-            redirect_url = self.add_preserved_filters({'preserved_filters': preserved_filters, 'opts': opts}, redirect_url)
-            return HttpResponseRedirect(redirect_url)
-
-        else:
-            msg = format_html(
-                _('The {name} "{obj}" was changed successfully.'),
-                **msg_dict
-            )
-            self.message_user(request, msg, messages.SUCCESS)
-        return self.response_post_save_change(request, obj)
-
-    def response_post_save_add(self, request, obj):
-        opts = self.model._meta
-        if self.has_change_permission(request, None):
-            post_url = self.reverse_url('changelist', *self.get_base_url_args(request))
+    def _response_post_save(self, request, obj):
+        if self.has_view_or_change_permission(request):
+            url_args = self.get_base_url_args(request)
+            if request.subadmin.object_id is not None:
+                url_args = url_args[:-1]
+            post_url = self.reverse_url('changelist', *url_args)
             preserved_filters = self.get_preserved_filters(request)
-            post_url = self.add_preserved_filters({'preserved_filters': preserved_filters, 'opts': opts}, post_url)
-        else:
-            post_url = reverse('admin:index', current_app=self.admin_site.name)
-        return HttpResponseRedirect(post_url)
-
-    def response_post_save_change(self, request, obj):
-        opts = self.model._meta
-
-        if self.has_change_permission(request, None):
-            post_url = self.reverse_url('changelist', *self.get_base_url_args(request)[:-1])
-            preserved_filters = self.get_preserved_filters(request)
-            post_url = self.add_preserved_filters({'preserved_filters': preserved_filters, 'opts': opts}, post_url)
+            post_url = self.add_preserved_filters({'preserved_filters': preserved_filters, 'opts': self.opts}, post_url)
         else:
             post_url = reverse('admin:index', current_app=self.admin_site.name)
         return HttpResponseRedirect(post_url)
 
     def response_delete(self, request, obj_display, obj_id):
-        opts = self.model._meta
-
         if IS_POPUP_VAR in request.POST:
-            popup_response_data = json.dumps({
-                'action': 'delete',
-                'value': str(obj_id),
-            })
-            return TemplateResponse(request, self.popup_response_template or [
-                'admin/%s/%s/popup_response.html' % (opts.app_label, opts.model_name),
-                'admin/%s/popup_response.html' % opts.app_label,
-                'admin/popup_response.html',
-            ], {
-                'popup_response_data': popup_response_data,
-            })
+            return super().response_delete(request, obj_display, obj_id)
 
+        opts = self.model._meta
         self.message_user(
             request,
             _('The %(name)s "%(obj)s" was deleted successfully.') % {
