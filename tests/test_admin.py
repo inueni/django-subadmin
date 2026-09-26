@@ -11,7 +11,12 @@ from django.test import TestCase, override_settings
 from django.urls import reverse
 
 from .testapp.models import (
-    Child, Grandchild, Parent, RepeatedParentGrandchild, StringChild, StringParent,
+    Child,
+    Grandchild,
+    Parent,
+    RepeatedParentGrandchild,
+    StringChild,
+    StringParent,
     UnrelatedParentGrandchild,
 )
 
@@ -19,7 +24,9 @@ from .testapp.models import (
 class NestedAdminTests(TestCase):
     @classmethod
     def setUpTestData(cls):
-        cls.user = get_user_model().objects.create_superuser("admin", "admin@example.com", "password")
+        cls.user = get_user_model().objects.create_superuser(
+            "admin", "admin@example.com", "password"
+        )
         cls.parent = Parent.objects.create(name="Parent")
         cls.other_parent = Parent.objects.create(name="Other")
         cls.child = Child.objects.create(parent=cls.parent, name="Existing")
@@ -29,7 +36,9 @@ class NestedAdminTests(TestCase):
         self.client.force_login(self.user)
 
     def child_url(self, action, *args):
-        return reverse(f"admin:testapp_parent_child_{action}", args=[self.parent.pk, *args])
+        return reverse(
+            f"admin:testapp_parent_child_{action}", args=[self.parent.pk, *args]
+        )
 
     def grandchild_url(self, action, *args):
         return reverse(
@@ -59,7 +68,9 @@ class NestedAdminTests(TestCase):
         self.assertNotContains(response, "Other child")
 
     def test_child_creation_sets_parent(self):
-        response = self.client.post(self.child_url("add"), {"name": "New", "_save": "Save"})
+        response = self.client.post(
+            self.child_url("add"), {"name": "New", "_save": "Save"}
+        )
         self.assertEqual(response.status_code, 302)
         self.assertTrue(Child.objects.filter(parent=self.parent, name="New").exists())
 
@@ -72,9 +83,15 @@ class NestedAdminTests(TestCase):
             Permission.objects.get(content_type=parent_type, codename="view_parent"),
         )
         self.client.force_login(viewer)
-        response = self.client.post(self.child_url("add"), {"name": "Viewable", "_save": "Save"})
-        self.assertRedirects(response, self.child_url("changelist"), fetch_redirect_response=False)
-        self.assertTrue(Child.objects.filter(parent=self.parent, name="Viewable").exists())
+        response = self.client.post(
+            self.child_url("add"), {"name": "Viewable", "_save": "Save"}
+        )
+        self.assertRedirects(
+            response, self.child_url("changelist"), fetch_redirect_response=False
+        )
+        self.assertTrue(
+            Child.objects.filter(parent=self.parent, name="Viewable").exists()
+        )
 
     def test_nested_creation_with_reused_parent_field(self):
         add_url = reverse(
@@ -88,7 +105,9 @@ class NestedAdminTests(TestCase):
         response = self.client.post(add_url, {"name": "Nested", "_save": "Save"})
         self.assertEqual(response.status_code, 302)
         self.assertTrue(
-            RepeatedParentGrandchild.objects.filter(parent=self.child, name="Nested").exists()
+            RepeatedParentGrandchild.objects.filter(
+                parent=self.child, name="Nested"
+            ).exists()
         )
 
     def test_nested_form_preserves_unrelated_parent_field(self):
@@ -124,21 +143,34 @@ class NestedAdminTests(TestCase):
             with self.subTest(button=button):
                 name = f"Changed {button}"
                 response = self.client.post(change_url, {"name": name, button: "1"})
-                self.assertRedirects(response, destination, fetch_redirect_response=False)
+                self.assertRedirects(
+                    response, destination, fetch_redirect_response=False
+                )
                 self.child.refresh_from_db()
                 self.assertEqual(self.child.name, name)
 
-        response = self.client.post(change_url, {"name": "Changed popup", "_popup": "1"})
+        response = self.client.post(
+            change_url, {"name": "Changed popup", "_popup": "1"}
+        )
         self.assertEqual(response.status_code, 200)
         popup_data = json.loads(response.context_data["popup_response_data"])
         self.assertEqual(popup_data["action"], "change")
         self.assertEqual(popup_data["value"], str(self.child.pk))
 
         child_admin = admin.site._registry[Parent].subadmin_instances[0]
-        with patch.object(child_admin, "save_as", True), patch.object(child_admin, "save_as_continue", False):
-            response = self.client.post(change_url, {"name": "Copied", "_saveasnew": "1"})
-        self.assertRedirects(response, self.child_url("changelist"), fetch_redirect_response=False)
-        self.assertTrue(Child.objects.filter(parent=self.parent, name="Copied").exists())
+        with (
+            patch.object(child_admin, "save_as", True),
+            patch.object(child_admin, "save_as_continue", False),
+        ):
+            response = self.client.post(
+                change_url, {"name": "Copied", "_saveasnew": "1"}
+            )
+        self.assertRedirects(
+            response, self.child_url("changelist"), fetch_redirect_response=False
+        )
+        self.assertTrue(
+            Child.objects.filter(parent=self.parent, name="Copied").exists()
+        )
 
     def test_nested_filter_navigation(self):
         changelist_url = self.child_url("changelist")
@@ -146,19 +178,25 @@ class NestedAdminTests(TestCase):
         filters = "_changelist_filters=name%3DExisting&extra=1"
 
         response = self.client.get(f"{changelist_url}?name=Existing")
-        self.assertContains(response, f'{add_url}?_changelist_filters=name%3DExisting')
+        self.assertContains(response, f"{add_url}?_changelist_filters=name%3DExisting")
 
-        response = self.client.post(f"{add_url}?{filters}", {"name": "New", "_continue": "1"})
+        response = self.client.post(
+            f"{add_url}?{filters}", {"name": "New", "_continue": "1"}
+        )
         self.assertEqual(response.status_code, 302)
         new_child = Child.objects.get(parent=self.parent, name="New")
-        self.assertEqual(urlsplit(response["Location"]).path, self.child_url("change", new_child.pk))
+        self.assertEqual(
+            urlsplit(response["Location"]).path, self.child_url("change", new_child.pk)
+        )
         self.assertEqual(
             parse_qs(urlsplit(response["Location"]).query),
             {"_changelist_filters": ["name=Existing"], "extra": ["1"]},
         )
 
         change_url = self.child_url("change", new_child.pk)
-        response = self.client.post(f"{change_url}?{filters}", {"name": "New", "_addanother": "1"})
+        response = self.client.post(
+            f"{change_url}?{filters}", {"name": "New", "_addanother": "1"}
+        )
         self.assertEqual(response.status_code, 302)
         self.assertEqual(urlsplit(response["Location"]).path, add_url)
         self.assertEqual(
@@ -174,9 +212,15 @@ class NestedAdminTests(TestCase):
             Permission.objects.get(content_type=parent_type, codename="view_parent"),
         )
         self.client.force_login(viewer)
-        response = self.client.get(f'{self.child_url("change", self.child.pk)}?_changelist_filters=name%3DExisting')
-        self.assertContains(response, f'href="{changelist_url}?name=Existing" class="closelink"')
-        self.assertEqual(self.client.get(f"{changelist_url}?name=Existing").status_code, 200)
+        response = self.client.get(
+            f"{self.child_url('change', self.child.pk)}?_changelist_filters=name%3DExisting"
+        )
+        self.assertContains(
+            response, f'href="{changelist_url}?name=Existing" class="closelink"'
+        )
+        self.assertEqual(
+            self.client.get(f"{changelist_url}?name=Existing").status_code, 200
+        )
 
     def test_nested_views_require_ancestor_permissions(self):
         viewer = get_user_model().objects.create_user("ancestor-viewer", is_staff=True)
@@ -184,7 +228,9 @@ class NestedAdminTests(TestCase):
         child_type = ContentType.objects.get_for_model(Child)
         grandchild_type = ContentType.objects.get_for_model(Grandchild)
         viewer.user_permissions.add(
-            Permission.objects.get(content_type=grandchild_type, codename="view_grandchild")
+            Permission.objects.get(
+                content_type=grandchild_type, codename="view_grandchild"
+            )
         )
         self.client.force_login(viewer)
 
@@ -204,8 +250,12 @@ class NestedAdminTests(TestCase):
         self.assertEqual(self.client.get(url).status_code, 200)
 
     def test_child_delete_responses(self):
-        response = self.client.post(self.child_url("delete", self.child.pk), {"post": "yes"})
-        self.assertRedirects(response, self.child_url("changelist"), fetch_redirect_response=False)
+        response = self.client.post(
+            self.child_url("delete", self.child.pk), {"post": "yes"}
+        )
+        self.assertRedirects(
+            response, self.child_url("changelist"), fetch_redirect_response=False
+        )
         self.assertFalse(Child.objects.filter(pk=self.child.pk).exists())
 
         popup_child = Child.objects.create(parent=self.parent, name="Popup")
@@ -229,12 +279,18 @@ class NestedAdminTests(TestCase):
 
     def test_string_primary_key_navigation(self):
         parent = StringParent.objects.create(id="parent_2Fid", name="String parent")
-        child = StringChild.objects.create(id="child_2Fid", parent=parent, name="String child")
+        child = StringChild.objects.create(
+            id="child_2Fid", parent=parent, name="String child"
+        )
         parent_id = quote(parent.pk)
         child_id = quote(child.pk)
         parent_url = reverse("admin:testapp_stringparent_change", args=[parent_id])
-        changelist_url = reverse("admin:testapp_stringparent_stringchild_changelist", args=[parent_id])
-        add_url = reverse("admin:testapp_stringparent_stringchild_add", args=[parent_id])
+        changelist_url = reverse(
+            "admin:testapp_stringparent_stringchild_changelist", args=[parent_id]
+        )
+        add_url = reverse(
+            "admin:testapp_stringparent_stringchild_add", args=[parent_id]
+        )
         change_url = reverse(
             "admin:testapp_stringparent_stringchild_change", args=[parent_id, child_id]
         )
@@ -265,7 +321,8 @@ class NestedAdminTests(TestCase):
             add_url, {"id": added_id, "name": "Added", "_continue": "1"}
         )
         added_url = reverse(
-            "admin:testapp_stringparent_stringchild_change", args=[parent_id, quote(added_id)]
+            "admin:testapp_stringparent_stringchild_change",
+            args=[parent_id, quote(added_id)],
         )
         self.assertRedirects(response, added_url, fetch_redirect_response=False)
         self.assertTrue(StringChild.objects.filter(pk=added_id, parent=parent).exists())

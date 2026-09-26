@@ -3,7 +3,12 @@ from django.contrib import admin
 from subadmin import RootSubAdmin, SubAdmin
 
 from .models import (
-    Child, Grandchild, Parent, RepeatedParentGrandchild, StringChild, StringParent,
+    Child,
+    Grandchild,
+    Parent,
+    RepeatedParentGrandchild,
+    StringChild,
+    StringParent,
     UnrelatedParentGrandchild,
 )
 
@@ -22,12 +27,16 @@ class UnrelatedParentGrandchildAdmin(SubAdmin):
 
 class ChildAdmin(SubAdmin):
     model = Child
-    subadmins = [GrandchildAdmin, RepeatedParentGrandchildAdmin, UnrelatedParentGrandchildAdmin]
+    subadmins = (
+        GrandchildAdmin,
+        RepeatedParentGrandchildAdmin,
+        UnrelatedParentGrandchildAdmin,
+    )
 
 
 @admin.register(Parent)
 class ParentAdmin(RootSubAdmin):
-    subadmins = [ChildAdmin]
+    subadmins = (ChildAdmin,)
 
 
 class StringChildAdmin(SubAdmin):
@@ -36,4 +45,4 @@ class StringChildAdmin(SubAdmin):
 
 @admin.register(StringParent)
 class StringParentAdmin(RootSubAdmin):
-    subadmins = [StringChildAdmin]
+    subadmins = (StringChildAdmin,)
