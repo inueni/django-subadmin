@@ -6,7 +6,7 @@ from urllib.parse import parse_qsl, quote as urlquote, unquote as urlunquote, ur
 
 from django.conf import settings
 from django.urls import path, re_path, include
-from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
+from django.core.exceptions import FieldDoesNotExist, NON_FIELD_ERRORS, ValidationError
 from django.contrib.admin.options import IS_POPUP_VAR, TO_FIELD_VAR
 from django.contrib.admin.utils import unquote, quote
 from django.contrib import admin
@@ -104,9 +104,15 @@ class SubAdminFormMixin(object):
 
     @cached_property
     def _related_instances_fields(self):
-        return {
-            key: self._related_instances[key] for key in self._related_instances.keys() if key in self._meta.model._meta._forward_fields_map.keys()
-        }
+        fields = {}
+        for name, instance in self._related_instances.items():
+            try:
+                field = self._meta.model._meta.get_field(name)
+            except FieldDoesNotExist:
+                continue
+            if field.concrete:
+                fields[name] = instance
+        return fields
 
 
 class SubAdminBase(object):
@@ -133,7 +139,7 @@ class SubAdminBase(object):
         subadmin_links = []
         if obj:
             for modeladmin in self.subadmin_instances:
-                if modeladmin.has_change_permission(request):
+                if modeladmin.has_view_or_change_permission(request):
                     url_args = modeladmin.get_base_url_args(request) or [obj.pk]
                     subadmin_links.append({
                         'name': modeladmin.model._meta.verbose_name_plural,
