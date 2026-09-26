@@ -48,6 +48,12 @@ def subadmin_url(context, viewname, *args, **kwargs):
     view_args = subadmin.base_url_args[:-1] if subadmin.object_id else subadmin.base_url_args
     return reverse('admin:%s_%s' % (subadmin.base_viewname, viewname), args=view_args + list(args), kwargs=kwargs)
 
+@register.simple_tag(takes_context=True)
+def subadmin_add_preserved_filters(context, url, popup=False, to_field=None):
+    adminform = context.get('adminform')
+    model_admin = adminform.model_admin if adminform else context['cl'].model_admin
+    return model_admin.add_preserved_filters(context, url, popup, to_field)
+
 @register.inclusion_tag('subadmin/submit_line.html', takes_context=True)
 def subadmin_submit_row(context):
     ctx = submit_row(context)
