@@ -13,9 +13,11 @@ class Child(models.Model):
     name = models.CharField(max_length=100)
 
     class Meta:
-        constraints = [
-            models.UniqueConstraint(fields=["parent", "name"], name="unique_child_per_parent")
-        ]
+        constraints = (
+            models.UniqueConstraint(
+                fields=["parent", "name"], name="unique_child_per_parent"
+            ),
+        )
 
     def __str__(self):
         return self.name
