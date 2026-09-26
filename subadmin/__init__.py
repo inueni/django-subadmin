@@ -1,10 +1,12 @@
 import json
+from copy import copy
 from collections import OrderedDict
 from functools import partial, update_wrapper
 from urllib.parse import parse_qsl, urlparse, urlunparse
 
+from django.conf import settings
 from django.urls import path, re_path, include
-from django.core.exceptions import ValidationError
+from django.core.exceptions import NON_FIELD_ERRORS, ValidationError
 from django.contrib.admin.options import IS_POPUP_VAR, TO_FIELD_VAR
 from django.contrib.admin.utils import unquote, quote
 from django.contrib import admin
@@ -13,7 +15,7 @@ from django.contrib.admin.views.main import ChangeList
 from django.contrib.admin.actions import delete_selected
 from django.db import transaction
 from django.forms.models import _get_foreign_key
-from django.http import HttpResponseRedirect
+from django.http import Http404, HttpResponseRedirect
 from django.shortcuts import get_object_or_404
 from django.template.response import TemplateResponse
 from django.utils.decorators import method_decorator
@@ -30,35 +32,30 @@ __all__ = ('SubAdmin', 'RootSubAdmin', 'SubAdminMixin', 'RootSubAdminMixin', 'Su
 
 
 class SubAdminHelper(object):
-    def __init__(self, sub_admin, view_args, object_id=None):
-        self.parents = []
+    def __init__(self, sub_admin, view_args, parents, object_id=None):
+        self.parents = list(parents)
         self.lookup_kwargs = {}
         self.related_instances = OrderedDict()
         self.object_id = object_id
         self.view_args = view_args
         self.base_viewname = sub_admin.get_base_viewname()
-        self.load_tree(sub_admin)
-
-    def load_tree(self, sub_admin):
-        parent_admin = sub_admin.parent_admin
         fk_lookup = sub_admin.fk_name
 
-        i = 2 if self.object_id else 1
-        while parent_admin:
-            obj = sub_admin.get_parent_instance(self.view_args[-i])
-            self.parents.append({
-                'admin': parent_admin,
-                'object': obj,
-            })
+        for parent in self.parents:
+            obj = parent['object']
             self.lookup_kwargs[fk_lookup] = obj
             self.related_instances[sub_admin.fk_name] = obj
 
-            sub_admin = parent_admin
-            parent_admin = getattr(sub_admin, 'parent_admin', None)
-            if parent_admin:
+            sub_admin = parent['admin']
+            if getattr(sub_admin, 'parent_admin', None):
                 fk_lookup = '%s__%s' % (fk_lookup, sub_admin.fk_name)
 
-            i += 1
+        for parent, ancestor in zip(self.parents, self.parents[1:]):
+            obj = parent['object']
+            parent_field = obj._meta.get_field(parent['admin'].fk_name)
+            expected = getattr(ancestor['object'], parent_field.target_field.attname)
+            if getattr(obj, parent_field.attname) != expected:
+                raise Http404
 
     @cached_property
     def parent(self):
@@ -89,28 +86,21 @@ class SubAdminChangeList(ChangeList):
 
 class SubAdminFormMixin(object):
     def _post_clean(self):
-        validate_unique = self._validate_unique
-        self._validate_unique = False
-        super()._post_clean()
-
         for fk_field, fk_instance in self._related_instances_fields.items():
             setattr(self.instance, fk_field, fk_instance)
+        super()._post_clean()
 
-        self._validate_unique = validate_unique
-        if self._validate_unique:
-            self.validate_unique()
+    def _get_validation_exclusions(self):
+        return super()._get_validation_exclusions() - self._related_instances_fields.keys()
 
-
-    def validate_unique(self):
-        exclude = self._get_subadmin_validation_exclusions()
-
-        try:
-            self.instance.validate_unique(exclude=exclude)
-        except ValidationError as e:
-            self._update_errors(e)
-
-    def _get_subadmin_validation_exclusions(self):
-        return [f for f in self._get_validation_exclusions() if f not in self._related_instances_fields.keys()]
+    def _update_errors(self, errors):
+        if hasattr(errors, 'error_dict'):
+            error_dict = {name: list(messages) for name, messages in errors.error_dict.items()}
+            for name in self._related_instances_fields.keys() - self.fields.keys():
+                if name in error_dict:
+                    error_dict.setdefault(NON_FIELD_ERRORS, []).extend(error_dict.pop(name))
+            errors = ValidationError(error_dict)
+        super()._update_errors(errors)
 
     @cached_property
     def _related_instances_fields(self):
@@ -177,8 +167,36 @@ class SubAdminMixin(SubAdminBase):
 
         self.subadmin_instances = self.get_subadmin_instances()
 
-    def get_subadmin_helper(self, view_args, object_id=None):
-        return self.subadmin_helper_class(self, view_args, object_id=object_id)
+    def get_subadmin_helper(self, request, view_args, object_id=None):
+        parent_ids = view_args[:-1] if object_id is not None else view_args
+        chain = []
+        sub_admin = self
+        while isinstance(sub_admin, SubAdminMixin):
+            chain.append(sub_admin)
+            sub_admin = sub_admin.parent_admin
+        chain.reverse()
+
+        if len(parent_ids) != len(chain):
+            raise Http404
+
+        loaded = []
+        for depth, (sub_admin, parent_id) in enumerate(zip(chain, parent_ids)):
+            parent_admin = sub_admin.parent_admin
+            parent_request = copy(request)
+            if depth:
+                # The parent's queryset needs its own ancestor context.
+                parent_request.subadmin = parent_admin.subadmin_helper_class(
+                    parent_admin, parent_ids[:depth + 1], reversed(loaded), object_id=parent_id
+                )
+            elif hasattr(parent_request, 'subadmin'):
+                del parent_request.subadmin
+
+            obj = sub_admin.get_parent_instance(parent_request, parent_id)
+            loaded.append({'admin': parent_admin, 'object': obj})
+
+        return self.subadmin_helper_class(
+            self, view_args, reversed(loaded), object_id=object_id
+        )
 
     def get_model_perms(self, request):
         return super().get_model_perms(request)
@@ -268,8 +286,14 @@ class SubAdminMixin(SubAdminBase):
         })
         return context
 
-    def get_parent_instance(self, parent_id):
-        return get_object_or_404(self.parent_model, pk=unquote(parent_id))
+    def get_parent_instance(self, request, parent_id):
+        if getattr(settings, 'SUBADMIN_USE_DIRECT_PARENT_LOOKUP', False):
+            return get_object_or_404(self.parent_model, pk=unquote(parent_id))
+
+        obj = self.parent_admin.get_object(request, unquote(parent_id))
+        if obj is None:
+            raise Http404
+        return obj
 
     def get_preserved_filters(self, request):
         match = request.resolver_match
@@ -324,20 +348,20 @@ class SubAdminMixin(SubAdminBase):
     @csrf_protect_m
     def changelist_view(self, request, *args, **kwargs):
         extra_context = kwargs.get('extra_context')
-        request.subadmin = SubAdminHelper(self, args)
+        request.subadmin = self.get_subadmin_helper(request, args)
         extra_context = self.context_add_parent_data(request, extra_context)
         return super().changelist_view(request, extra_context)
 
     def add_view(self, request, *args, **kwargs):
         form_url, extra_context = kwargs.get('form_url', ''), kwargs.get('extra_context')
-        request.subadmin = SubAdminHelper(self, args)
+        request.subadmin = self.get_subadmin_helper(request, args)
         extra_context = self.context_add_parent_data(request, extra_context)
         return super().add_view(request, form_url, extra_context)
 
     def change_view(self, request, *args, **kwargs):
         form_url, extra_context = kwargs.get('form_url', ''), kwargs.get('extra_context')
         object_id = args[-1]
-        request.subadmin = SubAdminHelper(self, args, object_id=object_id)
+        request.subadmin = self.get_subadmin_helper(request, args, object_id=object_id)
         extra_context = self.context_add_parent_data(request, extra_context)
         return super().change_view(request, object_id, form_url, extra_context)
 
@@ -346,14 +370,14 @@ class SubAdminMixin(SubAdminBase):
     def delete_view(self, request, *args, **kwargs):
         extra_context = kwargs.get('extra_context')
         object_id = args[-1]
-        request.subadmin = SubAdminHelper(self, args, object_id=object_id)
+        request.subadmin = self.get_subadmin_helper(request, args, object_id=object_id)
         extra_context = self.context_add_parent_data(request, extra_context)
         return super().delete_view(request, object_id, extra_context)
 
     def history_view(self, request, *args, **kwargs):
         extra_context = kwargs.get('extra_context')
         object_id = args[-1]
-        request.subadmin = SubAdminHelper(self, args, object_id=object_id)
+        request.subadmin = self.get_subadmin_helper(request, args, object_id=object_id)
         extra_context = self.context_add_parent_data(request, extra_context)
         return super().history_view(request, object_id, extra_context)
 
@@ -433,10 +457,11 @@ class SubAdminMixin(SubAdminBase):
             return self.response_post_save_add(request, obj)
 
     def response_change(self, request, obj):
+        opts = self.model._meta
         if IS_POPUP_VAR in request.POST:
             to_field = request.POST.get(TO_FIELD_VAR)
             attr = str(to_field) if to_field else obj._meta.pk.attname
-            value = request.resolver_match.args[0]
+            value = unquote(request.subadmin.object_id)
             new_value = obj.serializable_value(attr)
             popup_response_data = json.dumps({
                 'action': 'change',
@@ -452,7 +477,6 @@ class SubAdminMixin(SubAdminBase):
                 'popup_response_data': popup_response_data,
             })
 
-        opts = self.model._meta
         pk_value = obj._get_pk_val()
         preserved_filters = self.get_preserved_filters(request)
 
