@@ -29,8 +29,25 @@ class Grandchild(models.Model):
         return self.name
 
 
+class RepeatedParentGrandchild(models.Model):
+    parent = models.ForeignKey(Child, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
 class StringParent(models.Model):
     id = models.CharField(max_length=50, primary_key=True)
+    name = models.CharField(max_length=100)
+
+    def __str__(self):
+        return self.name
+
+
+class UnrelatedParentGrandchild(models.Model):
+    child = models.ForeignKey(Child, on_delete=models.CASCADE)
+    parent = models.ForeignKey(StringParent, on_delete=models.CASCADE)
     name = models.CharField(max_length=100)
 
     def __str__(self):

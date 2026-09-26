@@ -7,10 +7,13 @@ from django.contrib.admin.utils import quote
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
-from django.test import TestCase
+from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from .testapp.models import Child, Grandchild, Parent, StringChild, StringParent
+from .testapp.models import (
+    Child, Grandchild, Parent, RepeatedParentGrandchild, StringChild, StringParent,
+    UnrelatedParentGrandchild,
+)
 
 
 class NestedAdminTests(TestCase):
@@ -62,14 +65,52 @@ class NestedAdminTests(TestCase):
 
         viewer = get_user_model().objects.create_user("add-and-view", is_staff=True)
         child_type = ContentType.objects.get_for_model(Child)
+        parent_type = ContentType.objects.get_for_model(Parent)
         viewer.user_permissions.add(
             Permission.objects.get(content_type=child_type, codename="add_child"),
             Permission.objects.get(content_type=child_type, codename="view_child"),
+            Permission.objects.get(content_type=parent_type, codename="view_parent"),
         )
         self.client.force_login(viewer)
         response = self.client.post(self.child_url("add"), {"name": "Viewable", "_save": "Save"})
         self.assertRedirects(response, self.child_url("changelist"), fetch_redirect_response=False)
         self.assertTrue(Child.objects.filter(parent=self.parent, name="Viewable").exists())
+
+    def test_nested_creation_with_reused_parent_field(self):
+        add_url = reverse(
+            "admin:testapp_parent_child_repeatedparentgrandchild_add",
+            args=[self.parent.pk, self.child.pk],
+        )
+        response = self.client.get(add_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertNotIn("parent", response.context["adminform"].form.fields)
+
+        response = self.client.post(add_url, {"name": "Nested", "_save": "Save"})
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            RepeatedParentGrandchild.objects.filter(parent=self.child, name="Nested").exists()
+        )
+
+    def test_nested_form_preserves_unrelated_parent_field(self):
+        unrelated_parent = StringParent.objects.create(id="unrelated", name="Unrelated")
+        add_url = reverse(
+            "admin:testapp_parent_child_unrelatedparentgrandchild_add",
+            args=[self.parent.pk, self.child.pk],
+        )
+        response = self.client.get(add_url)
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("parent", response.context["adminform"].form.fields)
+        self.assertNotIn("child", response.context["adminform"].form.fields)
+
+        response = self.client.post(
+            add_url, {"parent": unrelated_parent.pk, "name": "Nested", "_save": "Save"}
+        )
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(
+            UnrelatedParentGrandchild.objects.filter(
+                child=self.child, parent=unrelated_parent, name="Nested"
+            ).exists()
+        )
 
     def test_child_change_responses(self):
         change_url = self.child_url("change", self.child.pk)
@@ -127,11 +168,40 @@ class NestedAdminTests(TestCase):
 
         viewer = get_user_model().objects.create_user("viewer", is_staff=True)
         child_type = ContentType.objects.get_for_model(Child)
-        viewer.user_permissions.add(Permission.objects.get(content_type=child_type, codename="view_child"))
+        parent_type = ContentType.objects.get_for_model(Parent)
+        viewer.user_permissions.add(
+            Permission.objects.get(content_type=child_type, codename="view_child"),
+            Permission.objects.get(content_type=parent_type, codename="view_parent"),
+        )
         self.client.force_login(viewer)
         response = self.client.get(f'{self.child_url("change", self.child.pk)}?_changelist_filters=name%3DExisting')
         self.assertContains(response, f'href="{changelist_url}?name=Existing" class="closelink"')
         self.assertEqual(self.client.get(f"{changelist_url}?name=Existing").status_code, 200)
+
+    def test_nested_views_require_ancestor_permissions(self):
+        viewer = get_user_model().objects.create_user("ancestor-viewer", is_staff=True)
+        parent_type = ContentType.objects.get_for_model(Parent)
+        child_type = ContentType.objects.get_for_model(Child)
+        grandchild_type = ContentType.objects.get_for_model(Grandchild)
+        viewer.user_permissions.add(
+            Permission.objects.get(content_type=grandchild_type, codename="view_grandchild")
+        )
+        self.client.force_login(viewer)
+
+        url = self.grandchild_url("changelist")
+        self.assertEqual(self.client.get(url).status_code, 403)
+        with override_settings(SUBADMIN_USE_DIRECT_PARENT_LOOKUP=True):
+            self.assertEqual(self.client.get(url).status_code, 403)
+
+        viewer.user_permissions.add(
+            Permission.objects.get(content_type=parent_type, codename="view_parent")
+        )
+        self.assertEqual(self.client.get(url).status_code, 403)
+
+        viewer.user_permissions.add(
+            Permission.objects.get(content_type=child_type, codename="view_child")
+        )
+        self.assertEqual(self.client.get(url).status_code, 200)
 
     def test_child_delete_responses(self):
         response = self.client.post(self.child_url("delete", self.child.pk), {"post": "yes"})
