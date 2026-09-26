@@ -12,7 +12,11 @@ def subadmin_breadcrumbs(context):
     opts = context['opts']
     root = {
         'name': request.subadmin.root['object']._meta.app_config.verbose_name,
-        'url': reverse('admin:app_list', kwargs={'app_label': request.subadmin.root['object']._meta.app_label})
+        'url': reverse(
+            'admin:app_list',
+            kwargs={'app_label': request.subadmin.root['object']._meta.app_label},
+            current_app=getattr(request, 'current_app', None),
+        )
     }
 
     breadcrumbs =[]
@@ -44,9 +48,15 @@ def subadmin_breadcrumbs(context):
 
 @register.simple_tag(takes_context=True)
 def subadmin_url(context, viewname, *args, **kwargs):
-    subadmin = context['request'].subadmin
+    request = context['request']
+    subadmin = request.subadmin
     view_args = subadmin.base_url_args[:-1] if subadmin.object_id else subadmin.base_url_args
-    return reverse('admin:%s_%s' % (subadmin.base_viewname, viewname), args=view_args + list(args), kwargs=kwargs)
+    return reverse(
+        'admin:%s_%s' % (subadmin.base_viewname, viewname),
+        args=view_args + list(args),
+        kwargs=kwargs,
+        current_app=getattr(request, 'current_app', None),
+    )
 
 @register.simple_tag(takes_context=True)
 def subadmin_add_preserved_filters(context, url, popup=False, to_field=None):
