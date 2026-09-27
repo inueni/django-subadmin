@@ -32,7 +32,7 @@ def subadmin_breadcrumbs(context):
         breadcrumbs.extend(
             [
                 {
-                    "name": obj._meta.verbose_name_plural,
+                    "name": adm.get_subadmin_label(request),
                     "url": adm.reverse_url("changelist", *view_args[:i]),
                     "has_view_permission": adm.has_view_permission(request),
                 },

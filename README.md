@@ -78,6 +78,19 @@ admin.site.register(MailingList, MailingListAdmin)
 
 With just a few lines of code you get a fully functional `ModelAdmin`, that will automatically pull in just the relevant related objects, based on `ForeignKey` relation between the two models, it will also auto set `ForeignKey` fields for nested relations and exclude them from change form when adding and editing objects on subadmin.
 
+To change the label used for a subadmin link and its collection breadcrumbs without
+renaming the model, set `subadmin_label` on that subadmin:
+
+```python
+class SubscriberSubAdmin(SubAdmin):
+    model = Subscriber
+    subadmin_label = "Members"
+```
+
+The default label is the model's `verbose_name_plural`. Object breadcrumbs and
+other model names keep their usual Django wording. Override
+`get_subadmin_label(request)` if the label needs to vary by request.
+
 
 ### Caveats
 
