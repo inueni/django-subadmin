@@ -61,6 +61,31 @@ class NestedAdminTests(TestCase):
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, "Parent")
 
+    def test_custom_subadmin_label_follows_collection_navigation(self):
+        child_admin = admin.site._registry[Parent].subadmin_instances[0]
+        with patch.object(child_admin, "subadmin_label", "Members"):
+            parent_change = self.client.get(
+                reverse("admin:testapp_parent_change", args=[self.parent.pk])
+            )
+            self.assertEqual(parent_change.context["subadmin_links"][0]["name"], "Members")
+
+            for url in (
+                self.child_url("changelist"),
+                self.child_url("add"),
+                self.child_url("change", self.child.pk),
+                self.child_url("history", self.child.pk),
+                self.child_url("delete", self.child.pk),
+                self.grandchild_url("changelist"),
+            ):
+                with self.subTest(url=url):
+                    self.assertContains(self.client.get(url), "Members")
+
+            delete_selected = self.client.post(
+                self.child_url("changelist"),
+                {"action": "delete_selected", "_selected_action": [str(self.child.pk)]},
+            )
+            self.assertContains(delete_selected, "Members")
+
     def test_child_changelist_is_scoped_to_parent(self):
         Child.objects.create(parent=self.other_parent, name="Other child")
         response = self.client.get(self.child_url("changelist"))

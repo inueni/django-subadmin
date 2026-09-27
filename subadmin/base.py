@@ -34,6 +34,13 @@ from .helpers import SubAdminHelper
 
 class SubAdminBase:
     subadmins = None
+    subadmin_label = None
+
+    def get_subadmin_label(self, request):
+        """Return the label for links and collection breadcrumbs to this admin."""
+        if self.subadmin_label is not None:
+            return self.subadmin_label
+        return self.model._meta.verbose_name_plural
 
     def get_subadmin_instances(self):
         return [
@@ -63,7 +70,8 @@ class SubAdminBase:
                     url_args = modeladmin.get_base_url_args(request) or [obj.pk]
                     subadmin_links.append(
                         {
-                            "name": modeladmin.model._meta.verbose_name_plural,
+                            "subadmin": modeladmin,
+                            "name": modeladmin.get_subadmin_label(request),
                             "url": modeladmin.reverse_url(
                                 "changelist", *[quote(arg) for arg in url_args]
                             ),
@@ -237,6 +245,7 @@ class SubAdminMixin(SubAdminBase):
             {
                 "parent_instance": parent_instance,
                 "parent_opts": parent_instance._meta,
+                "subadmin_label": self.get_subadmin_label(request),
             }
         )
         return context
