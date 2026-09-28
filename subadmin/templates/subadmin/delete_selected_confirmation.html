@@ -2,9 +2,9 @@
 {% load i18n admin_urls subadmin_tags %}
 
 {% block breadcrumbs %}
-<div class="breadcrumbs">
+<ol class="breadcrumbs">
 {% subadmin_breadcrumbs %}
-&rsaquo; <a href="{% subadmin_url 'changelist' %}">{{ subadmin_label|capfirst }}</a>
-&rsaquo; {% trans 'Delete multiple objects' %}
-</div>
+<li><a href="{% subadmin_url 'changelist' %}">{{ subadmin_label|capfirst }}</a></li>
+<li aria-current="page">{% trans 'Delete multiple objects' %}</li>
+</ol>
 {% endblock %}

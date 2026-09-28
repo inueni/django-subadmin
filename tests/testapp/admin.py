@@ -1,4 +1,5 @@
 from django.contrib import admin
+from django.contrib.admin import ActionLocation
 
 from subadmin import RootSubAdmin, SubAdmin
 
@@ -27,11 +28,16 @@ class UnrelatedParentGrandchildAdmin(SubAdmin):
 
 class ChildAdmin(SubAdmin):
     model = Child
+    actions = ("mark_actioned",)
     subadmins = (
         GrandchildAdmin,
         RepeatedParentGrandchildAdmin,
         UnrelatedParentGrandchildAdmin,
     )
+
+    @admin.action(description="Mark as actioned", location=ActionLocation.CHANGE_FORM)
+    def mark_actioned(self, request, queryset):
+        queryset.update(name="Actioned")
 
 
 @admin.register(Parent)

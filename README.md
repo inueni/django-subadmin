@@ -9,11 +9,13 @@ object. Subadmins can be nested several levels deep.
 
 | django-subadmin | Django | Python |
 | --- | --- | --- |
+| 6.1.x | 6.1+ | 3.12+ |
 | 5.2.x | 5.2, 6.0 | 3.10+ |
 | 3.2.x | 3.2, 4.x, 5.x | 3.6+ |
 
 The package version follows the oldest Django version supported by that line.
-The 5.2 release drops support for Django before 5.2 and Python before 3.10.
+Projects staying on Django 5.2 or 6.0 should constrain `django-subadmin` to
+`>=5.2,<6.1`.
 
 ## Installation
 

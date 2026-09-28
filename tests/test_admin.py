@@ -60,6 +60,8 @@ class NestedAdminTests(TestCase):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, "Parent")
+                self.assertContains(response, '<ol class="breadcrumbs">')
+                self.assertContains(response, '<li aria-current="page">')
 
     def test_custom_subadmin_label_follows_collection_navigation(self):
         child_admin = admin.site._registry[Parent].subadmin_instances[0]
@@ -196,6 +198,21 @@ class NestedAdminTests(TestCase):
         self.assertTrue(
             Child.objects.filter(parent=self.parent, name="Copied").exists()
         )
+
+    def test_child_change_form_action(self):
+        change_url = self.child_url("change", self.child.pk)
+        self.assertContains(self.client.get(change_url), "Mark as actioned")
+
+        response = self.client.post(
+            change_url,
+            {
+                "CHANGE_FORM-action": "mark_actioned",
+                "_selected_action": str(self.child.pk),
+            },
+        )
+        self.assertRedirects(response, change_url, fetch_redirect_response=False)
+        self.child.refresh_from_db()
+        self.assertEqual(self.child.name, "Actioned")
 
     def test_nested_filter_navigation(self):
         changelist_url = self.child_url("changelist")
