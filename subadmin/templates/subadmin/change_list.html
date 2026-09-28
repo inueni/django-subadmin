@@ -3,10 +3,10 @@
 
 {% if not is_popup %}
 {% block breadcrumbs %}
-<div class="breadcrumbs">
+<ol class="breadcrumbs">
 {% subadmin_breadcrumbs %}
-&rsaquo; {{ subadmin_label|capfirst }}
-</div>
+<li aria-current="page">{{ subadmin_label|capfirst }}</li>
+</ol>
 {% endblock %}
 {% endif %}
 

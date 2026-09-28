@@ -1,12 +1,12 @@
 {% extends "admin/change_form.html" %}
-{% load i18n admin_urls subadmin_tags %}
+{% load i18n admin_urls admin_filters subadmin_tags %}
 
 {% block breadcrumbs %}
-<div class="breadcrumbs">
+<ol class="breadcrumbs">
 {% subadmin_breadcrumbs %}
-&rsaquo; {% if has_view_permission %}<a href="{% subadmin_url 'changelist' %}">{{ subadmin_label|capfirst }}</a>{% else %}{{ subadmin_label|capfirst }}{% endif %}
-&rsaquo; {% if add %}{% blocktranslate with name=opts.verbose_name %}Add {{ name }}{% endblocktranslate %}{% else %}{{ original|truncatewords:"18" }}{% endif %}
-</div>
+<li>{% if has_view_permission %}<a href="{% subadmin_url 'changelist' %}">{{ subadmin_label|capfirst }}</a>{% else %}{{ subadmin_label|capfirst }}{% endif %}</li>
+<li aria-current="page">{% if add %}{% blocktranslate with name=opts.verbose_name %}Add {{ name }}{% endblocktranslate %}{% else %}{{ original|to_object_display_value|truncatewords:"18" }}{% endif %}</li>
+</ol>
 {% endblock %}
 
 {% block object-tools-items %}

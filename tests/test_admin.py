@@ -60,6 +60,8 @@ class NestedAdminTests(TestCase):
                 response = self.client.get(url)
                 self.assertEqual(response.status_code, 200)
                 self.assertContains(response, "Parent")
+                self.assertContains(response, '<ol class="breadcrumbs">')
+                self.assertContains(response, '<li aria-current="page">')
 
     def test_custom_subadmin_label_follows_collection_navigation(self):
         child_admin = admin.site._registry[Parent].subadmin_instances[0]
