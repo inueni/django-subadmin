@@ -57,6 +57,10 @@ jobs:
     permissions:
       contents: write
     steps:
+      - name: Checkout tags for release notes
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
       - name: Download distribution files
         uses: actions/download-artifact@v8
         with:
