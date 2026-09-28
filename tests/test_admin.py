@@ -7,6 +7,7 @@ from django.contrib.admin.utils import quote
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Permission
 from django.contrib.contenttypes.models import ContentType
+from django.contrib.messages import get_messages
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
@@ -358,7 +359,7 @@ class NestedAdminTests(TestCase):
             change_url, {"id": child.pk, "name": "Renamed", "_addanother": "1"}
         )
         self.assertRedirects(response, add_url, fetch_redirect_response=False)
-        added_id = "added_2Fid"
+        added_id = "added id"
         response = self.client.post(
             add_url, {"id": added_id, "name": "Added", "_continue": "1"}
         )
@@ -367,6 +368,8 @@ class NestedAdminTests(TestCase):
             args=[parent_id, quote(added_id)],
         )
         self.assertRedirects(response, added_url, fetch_redirect_response=False)
+        messages = list(get_messages(response.wsgi_request))
+        self.assertIn(f'href="{added_url}"', str(messages[-1]))
         self.assertTrue(StringChild.objects.filter(pk=added_id, parent=parent).exists())
 
         response = self.client.post(
