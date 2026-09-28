@@ -373,7 +373,7 @@ class SubAdminMixin(SubAdminBase):
         )
 
         if self.has_change_permission(request, obj):
-            obj_repr = format_html('<a href="{}">{}</a>', urlquote(obj_url), obj)
+            obj_repr = format_html('<a href="{}">{}</a>', obj_url, obj)
         else:
             obj_repr = str(obj)
 
