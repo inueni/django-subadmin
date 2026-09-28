@@ -1,7 +1,7 @@
 name: Build and publish to PyPI
 on:
   push:
-    tags: ["5.2.*"]
+    tags: ["*"]
 
 permissions:
   contents: read
@@ -21,11 +21,15 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v7
         with:
-          python-version: "3.10"
+          python-version: "3.12"
       - name: Install pypa/build
         run: python3 -m pip install --upgrade build
       - name: Build package
         run: python3 -m build --sdist --wheel --outdir dist/ .
+      - name: Verify package version matches tag
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: python3 scripts/verify_release_version.py "$RELEASE_TAG"
       - name: Upload dist as artifact
         uses: actions/upload-artifact@v7
         with:
