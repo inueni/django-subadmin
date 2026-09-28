@@ -4,7 +4,7 @@
 {% block breadcrumbs %}
 <div class="breadcrumbs">
 {% subadmin_breadcrumbs %}
-&rsaquo; <a href="{% subadmin_url 'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>
+&rsaquo; <a href="{% subadmin_url 'changelist' %}">{{ subadmin_label|capfirst }}</a>
 &rsaquo; {% trans 'Delete multiple objects' %}
 </div>
 {% endblock %}

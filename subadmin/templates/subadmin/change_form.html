@@ -4,8 +4,8 @@
 {% block breadcrumbs %}
 <div class="breadcrumbs">
 {% subadmin_breadcrumbs %}
-&rsaquo; {% if has_change_permission %}<a href="{% subadmin_url 'changelist' %}">{{ opts.verbose_name_plural|capfirst }}</a>{% else %}{{ opts.verbose_name_plural|capfirst }}{% endif %}
-&rsaquo; {% if add %}{% trans 'Add' %} {{ opts.verbose_name }}{% else %}{{ original|truncatewords:"18" }}{% endif %}
+&rsaquo; {% if has_view_permission %}<a href="{% subadmin_url 'changelist' %}">{{ subadmin_label|capfirst }}</a>{% else %}{{ subadmin_label|capfirst }}{% endif %}
+&rsaquo; {% if add %}{% blocktranslate with name=opts.verbose_name %}Add {{ name }}{% endblocktranslate %}{% else %}{{ original|truncatewords:"18" }}{% endif %}
 </div>
 {% endblock %}
 
@@ -15,10 +15,11 @@
     {% endfor %}
     <li>
         {% subadmin_url 'history' original.pk|admin_urlquote as history_url %}
-        <a href="{% add_preserved_filters history_url %}" class="historylink">{% trans "History" %}</a>
+        <a href="{% subadmin_add_preserved_filters history_url %}" class="historylink">{% trans "History" %}</a>
     </li>
     {% if has_absolute_url %}<li><a href="{{ absolute_url }}" class="viewsitelink">{% trans "View on site" %}</a></li>{% endif %}
 
 {% endblock %}
 
+{% block submit_buttons_top %}{% subadmin_submit_row %}{% endblock %}
 {% block submit_buttons_bottom %}{% subadmin_submit_row %}{% endblock %}
