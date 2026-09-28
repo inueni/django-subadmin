@@ -84,15 +84,15 @@ python -m django test tests --settings=tests.settings
 
 The parent change page links to its child admin.
 
-![Parent change page with a Children link](docs/images/parent-change.png)
+![Parent change page with a Children link](https://raw.githubusercontent.com/inueni/django-subadmin/574123d0571a47b20190b6eb5b8b924983df7150/docs/images/parent-change.png)
 
 The child changelist contains only that parent's children.
 
-![Child changelist scoped to Example parent](docs/images/child-list.png)
+![Child changelist scoped to Example parent](https://raw.githubusercontent.com/inueni/django-subadmin/574123d0571a47b20190b6eb5b8b924983df7150/docs/images/child-list.png)
 
 The child add form omits the parent foreign key, which is set automatically.
 
-![Child add form without a parent field](docs/images/child-add.png)
+![Child add form without a parent field](https://raw.githubusercontent.com/inueni/django-subadmin/574123d0571a47b20190b6eb5b8b924983df7150/docs/images/child-add.png)
 
 ## Labels
 
