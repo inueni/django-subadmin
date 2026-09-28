@@ -1,18 +1,25 @@
 name: Build and publish to PyPI
 on:
-  release:
-    types: [published]
+  push:
+    tags: ["5.2.*"]
+
+permissions:
+  contents: read
 
 jobs:
+  test:
+    uses: ./.github/workflows/ci.yml
+
   build:
+    needs: test
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v3
+        uses: actions/checkout@v7
         with:
           fetch-depth: 0
       - name: Set up Python
-        uses: actions/setup-python@v4
+        uses: actions/setup-python@v7
         with:
           python-version: "3.10"
       - name: Install pypa/build
@@ -20,10 +27,11 @@ jobs:
       - name: Build package
         run: python3 -m build --sdist --wheel --outdir dist/ .
       - name: Upload dist as artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v7
         with:
           name: dist
           path: ./dist
+          if-no-files-found: error
           retention-days: 3
 
   pypi-publish:
@@ -36,6 +44,26 @@ jobs:
       id-token: write
     steps:
       - name: Download artifact as dist
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
       - name: Publish package
         uses: pypa/gh-action-pypi-publish@release/v1
+
+  github-release:
+    needs: pypi-publish
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download distribution files
+        uses: actions/download-artifact@v8
+        with:
+          name: dist
+          path: dist
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh release create "$GITHUB_REF_NAME" dist/* --verify-tag --generate-notes
