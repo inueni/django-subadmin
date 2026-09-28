@@ -1,124 +1,136 @@
 # django-subadmin
 
-`django-subadmin` provides a special kind of `ModelAdmin`, called `SubAdmin`, that allows it to be nested within another `ModelAdmin` instance. Similar to django's built-in `InlineModelAdmin`, it allows editing of related objects, but instead of doing it inline, it gives you a full `ModelAdmin` as sub-admin of parent `ModelAdmin`. Like `InlineModelAdmin` it works on models related by `ForeignKey`. Multiple `SubAdmin` instances can be nested within a single `ModelAdmin` or `SubAdmin` allowing for multi-level nesting.
+`django-subadmin` lets a `ModelAdmin` live under another `ModelAdmin`. When
+related objects have outgrown an inline, a `SubAdmin` gives them their own list
+and change pages, with search, filters, and pagination scoped to a parent
+object. Subadmins can be nested several levels deep.
 
-### Supported Python and Django releases
+## Compatibility
 
-Current release of `django-subadmin` supports Django versions 3.2 and up (including Django 4).
+| django-subadmin | Django | Python |
+| --- | --- | --- |
+| 5.2.x | 5.2, 6.0 | 3.10+ |
+| 3.2.x | 3.2, 4.x, 5.x | 3.6+ |
 
-#### Verison numbering
-
-django-subadmin versions follow Django version numbers. django-subadmin major and minor version numbers equal the minimal compatible django release.
+The package version follows the oldest Django version supported by that line.
+The 5.2 release drops support for Django before 5.2 and Python before 3.10.
 
 ## Installation
 
-The easiest and recommended way to install `django-subadmin` is from [PyPI](https://pypi.python.org/pypi/django-subadmin)
-
-```
+```console
 pip install django-subadmin
 ```
 
-You need to add `subadmin` to `INSTALLED_APPS` in your projects `settings.py`, otherwise `django` will not be able to find the necessary templates and template tags.
+Add `subadmin` to `INSTALLED_APPS` so Django can find its templates:
 
-```
-# settings.py
-
-INSTALLED_APPS = (
-    ...
-    'subadmin',
-    ...
-)
+```python
+INSTALLED_APPS = [
+    # Django's contrib apps and your own apps...
+    "subadmin",
+]
 ```
 
-## Example Usage
+## Example
 
-Sometimes things are best explained by an example. Let's say you have two related models.
+The test app has a `Parent` model with related `Child` objects. Django's inline
+admin would put the children on the parent's form; a `SubAdmin` gives each
+parent its own child changelist instead.
 
 ```python
 # models.py
+from django.db import models
 
-class MailingList(models.Model):
+
+class Parent(models.Model):
     name = models.CharField(max_length=100)
 
 
-class Subscriber(models.Model):
-    mailing_list = models.ForeignKey(MailingList)
-    username = models.CharField(max_length=100)
+class Child(models.Model):
+    parent = models.ForeignKey(Parent, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
 ```
-
-If you wish to display only subscribers belonging to a particular mailing list in django admin, your only option is to use `InlineModelAdmin`, which is not very practical when dealing with a large number of related objects, plus, you loose all the cool functionality of `ModelAdmin` like searching, filtering, pagination, etc ...
-
-This is where `SubAdmin` comes in.
 
 ```python
 # admin.py
+from django.contrib import admin
+from subadmin import RootSubAdmin, SubAdmin
 
-from subadmin import SubAdmin, RootSubAdmin
-from .models import MailingList, Subscriber
-
-# Instead of admin.ModelAdmin we subclass SubAdmin,
-# we also set model attribute
-
-class SubscriberSubAdmin(SubAdmin): 
-    model = Subscriber
-    list_display = ('username',)
+from .models import Child, Parent
 
 
-# Since this is the top level model admin, which will be registred with admin.site,
-# we subclass RootSubAdmin and set subadmins attribute
+class ChildAdmin(SubAdmin):
+    model = Child
 
-class MailingListAdmin(RootSubAdmin):
-    list_display = ('name',)
 
-    subadmins = [SubscriberSubAdmin]
-    
-
-admin.site.register(MailingList, MailingListAdmin)
+@admin.register(Parent)
+class ParentAdmin(RootSubAdmin):
+    subadmins = (ChildAdmin,)
 ```
 
-With just a few lines of code you get a fully functional `ModelAdmin`, that will automatically pull in just the relevant related objects, based on `ForeignKey` relation between the two models, it will also auto set `ForeignKey` fields for nested relations and exclude them from change form when adding and editing objects on subadmin.
+Open a parent in the admin and follow the link to its child admin. The child
+pages show only records for that parent. The parent foreign key is set
+automatically when adding a child and omitted from the nested form.
 
-To change the label used for a subadmin link and its collection breadcrumbs without
-renaming the model, set `subadmin_label` on that subadmin:
+The [test app models](tests/testapp/models.py) and
+[admin configuration](tests/testapp/admin.py) also show deeper nesting. Their
+workflows are covered by [integration tests](tests/test_admin.py), which you
+can run from a source checkout with:
+
+```console
+python -m django test tests --settings=tests.settings
+```
+
+## Screenshots
+
+The parent change page links to its child admin.
+
+![Parent change page with a Children link](docs/images/parent-change.png)
+
+The child changelist contains only that parent's children.
+
+![Child changelist scoped to Example parent](docs/images/child-list.png)
+
+The child add form omits the parent foreign key, which is set automatically.
+
+![Child add form without a parent field](docs/images/child-add.png)
+
+## Labels
+
+Set `subadmin_label` to change a subadmin link and its collection breadcrumbs
+without renaming the model:
 
 ```python
-class SubscriberSubAdmin(SubAdmin):
-    model = Subscriber
+class ChildAdmin(SubAdmin):
+    model = Child
     subadmin_label = "Members"
 ```
 
-The default label is the model's `verbose_name_plural`. Object breadcrumbs and
-other model names keep their usual Django wording. Override
+The default is the model's `verbose_name_plural`. Object breadcrumbs and other
+model names keep their usual Django wording. Override
 `get_subadmin_label(request)` if the label needs to vary by request.
 
+## Upgrading from 3.2
 
-### Caveats
+Parent objects are now loaded through the parent admin's `get_object()` method,
+so custom `get_queryset()` filters affect nested pages. Each parent in the URL
+must also pass that admin's `has_view_or_change_permission(request, obj)` check.
+A parent hidden by the queryset returns 404; a visible parent without permission
+returns 403. Child permissions alone no longer grant access through a parent.
 
-In order to properly support unique field validation (see Issue #7), `SubAdmin` will inject a small mixin into the form. This is done in the `get_form` method and if you override this method in your own classes, make sure to call `super()` or `perp_subadmin_form()` directly. See `subadmin` source code for more details.
+If you need the previous direct model lookup while adapting a project, set:
 
-Also, the injected mixin `SubAdminFormMixin` overrides `validate_unique` on the form. If your custom form overrides this method as well, have a look at `subadmin` source code for ways in which it differs from the stock `ModelForm` implementation and adjust your code as necessary.
+```python
+SUBADMIN_USE_DIRECT_PARENT_LOOKUP = True
+```
 
+This changes how parents are loaded, but does not skip the parent permission
+check.
 
-### Screenshots
+Custom overrides of `get_parent_instance()` and `get_subadmin_helper()` need to
+accept `request` as their first argument after `self`. Their signatures are now
+`get_parent_instance(self, request, parent_id)` and
+`get_subadmin_helper(self, request, view_args, object_id=None)`.
 
-![alt text](https://github.com/inueni/django-subadmin-example/raw/master/screenshots/subadmin_screenshot_1.png?raw=true)
-
- `SubAdmin` instances are accessible from edit view of the `ModelAdmin` instance they are nested in. In the screenshot above you can see links to _Subscribers_ and _Messages_ subadmins (marked with red rectangle) for `MailingList` instance _Mailing list 5_.
-
----
-
-![alt text](https://github.com/inueni/django-subadmin-example/raw/master/screenshots/subadmin_screenshot_2.png?raw=true)
-
- `SubAdmin` looks and behaves just like a regular `ModelAdmin`, but looking at breadcrumbs (marked with red rectangle), you can see it is nested within another `ModelAdmin`. Displayed `Subscribers` are limited to those related to `MailingList` instance _Mailing list 5_.
-
----
-
- ![alt text](https://github.com/inueni/django-subadmin-example/raw/master/screenshots/subadmin_screenshot_3.png?raw=true)
-
-When adding or editing objects with `SubAdmin`, `ForeignKey` fields to parent instances are removed from the form and automatically set when saving. In this example `mailing_list` field is removed and value is set to parent `MailingList` instance _Mailing list 5_.
-
-> If you want to see it in action, or get a more in-depth look at how to set everything up, check out <https://github.com/inueni/django-subadmin-example>.
-
-## Stability
-
-`django-subadmin` has evolved from code that has been running on production servers since early 2014 without any issues. The code is provided **as-is** and the developers bear no responsibility for any issues stemming from it's use.
+`SubAdmin` wraps forms to validate parent-scoped fields. If you override
+`get_form()` or `get_changelist_form()`, call `super()` so that wrapping still
+runs.

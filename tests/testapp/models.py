@@ -13,6 +13,7 @@ class Child(models.Model):
     name = models.CharField(max_length=100)
 
     class Meta:
+        verbose_name_plural = "children"
         constraints = (
             models.UniqueConstraint(
                 fields=["parent", "name"], name="unique_child_per_parent"
