@@ -1,5 +1,6 @@
 import json
 from copy import copy
+from dataclasses import replace
 from functools import update_wrapper
 from urllib.parse import parse_qsl, urlsplit, urlunsplit
 from urllib.parse import quote as urlquote
@@ -7,6 +8,7 @@ from urllib.parse import unquote as urlunquote
 
 from django.conf import settings
 from django.contrib import messages
+from django.contrib.admin import ActionLocation
 from django.contrib.admin.options import IS_POPUP_VAR, TO_FIELD_VAR
 from django.contrib.admin.utils import quote, unquote
 from django.core.exceptions import PermissionDenied
@@ -142,20 +144,22 @@ class SubAdminMixin(SubAdminBase):
             self, view_args, reversed(loaded), object_id=object_id
         )
 
-    def get_actions(self, request):
-        actions = super().get_actions(request)
+    def get_actions(self, request, action_location=ActionLocation.CHANGE_LIST):
+        actions = super().get_actions(request, action_location=action_location)
 
         if "delete_selected" in actions:
-            action, name, description = actions["delete_selected"]
+            action = actions["delete_selected"]
 
             def subadmin_delete_selected(modeladmin, req, qs):
-                response = action(modeladmin, req, qs)
+                response = action.func(modeladmin, req, qs)
                 context_data = getattr(response, "context_data", None)
                 if context_data is not None:
                     context_data.update(self.context_add_parent_data(req))
                 return response
 
-            actions["delete_selected"] = (subadmin_delete_selected, name, description)
+            actions["delete_selected"] = replace(
+                action, func=subadmin_delete_selected
+            )
 
         return actions
 

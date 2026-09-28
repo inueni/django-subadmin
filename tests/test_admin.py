@@ -197,6 +197,21 @@ class NestedAdminTests(TestCase):
             Child.objects.filter(parent=self.parent, name="Copied").exists()
         )
 
+    def test_child_change_form_action(self):
+        change_url = self.child_url("change", self.child.pk)
+        self.assertContains(self.client.get(change_url), "Mark as actioned")
+
+        response = self.client.post(
+            change_url,
+            {
+                "CHANGE_FORM-action": "mark_actioned",
+                "_selected_action": str(self.child.pk),
+            },
+        )
+        self.assertRedirects(response, change_url, fetch_redirect_response=False)
+        self.child.refresh_from_db()
+        self.assertEqual(self.child.name, "Actioned")
+
     def test_nested_filter_navigation(self):
         changelist_url = self.child_url("changelist")
         add_url = self.child_url("add")
