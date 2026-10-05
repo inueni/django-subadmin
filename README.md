@@ -1,9 +1,8 @@
 # django-subadmin
 
-`django-subadmin` lets a `ModelAdmin` live under another `ModelAdmin`. When
-related objects have outgrown an inline, a `SubAdmin` gives them their own list
-and change pages, with search, filters, and pagination scoped to a parent
-object. Subadmins can be nested several levels deep.
+`django-subadmin` lets a `ModelAdmin` live under another `ModelAdmin`. When related objects have outgrown an inline, a `SubAdmin` gives them their own list and change pages, with search, filters, and pagination scoped to a parent object. Subadmins can be nested several levels deep.
+
+Using [Django Unfold](https://unfoldadmin.com/)? Check out [django-subadmin-unfold](https://github.com/inueni/django-subadmin-unfold) adapter for a fully integrated experience.
 
 ## Compatibility
 
@@ -13,9 +12,7 @@ object. Subadmins can be nested several levels deep.
 | 5.2.x | 5.2, 6.0 | 3.10+ |
 | 3.2.x | 3.2, 4.x, 5.x | 3.6+ |
 
-The package version follows the oldest Django version supported by that line.
-Projects staying on Django 5.2 or 6.0 should constrain `django-subadmin` to
-`>=5.2,<6.1`.
+The package version follows the oldest Django version supported by that line. Projects staying on Django 5.2 or 6.0 should constrain `django-subadmin` to `>=5.2,<6.1`.
 
 ## Installation
 
@@ -34,9 +31,7 @@ INSTALLED_APPS = [
 
 ## Example
 
-The test app has a `Parent` model with related `Child` objects. Django's inline
-admin would put the children on the parent's form; a `SubAdmin` gives each
-parent its own child changelist instead.
+The test app has a `Parent` model with related `Child` objects. Django's inline admin would put the children on the parent's form; a `SubAdmin` gives each parent its own child changelist instead.
 
 ```python
 # models.py
@@ -69,14 +64,9 @@ class ParentAdmin(RootSubAdmin):
     subadmins = (ChildAdmin,)
 ```
 
-Open a parent in the admin and follow the link to its child admin. The child
-pages show only records for that parent. The parent foreign key is set
-automatically when adding a child and omitted from the nested form.
+Open a parent in the admin and follow the link to its child admin. The child pages show only records for that parent. The parent foreign key is set automatically when adding a child and omitted from the nested form.
 
-The [test app models](tests/testapp/models.py) and
-[admin configuration](tests/testapp/admin.py) also show deeper nesting. Their
-workflows are covered by [integration tests](tests/test_admin.py), which you
-can run from a source checkout with:
+The [test app models](tests/testapp/models.py) and [admin configuration](tests/testapp/admin.py) also show deeper nesting. Their workflows are covered by [integration tests](tests/test_admin.py), which you can run from a source checkout with:
 
 ```console
 python -m django test tests --settings=tests.settings
@@ -98,8 +88,7 @@ The child add form omits the parent foreign key, which is set automatically.
 
 ## Labels
 
-Set `subadmin_label` to change a subadmin link and its collection breadcrumbs
-without renaming the model:
+Set `subadmin_label` to change a subadmin link and its collection breadcrumbs without renaming the model:
 
 ```python
 class ChildAdmin(SubAdmin):
@@ -107,17 +96,11 @@ class ChildAdmin(SubAdmin):
     subadmin_label = "Members"
 ```
 
-The default is the model's `verbose_name_plural`. Object breadcrumbs and other
-model names keep their usual Django wording. Override
-`get_subadmin_label(request)` if the label needs to vary by request.
+The default is the model's `verbose_name_plural`. Object breadcrumbs and other model names keep their usual Django wording. Override `get_subadmin_label(request)` if the label needs to vary by request.
 
 ## Upgrading from 3.2
 
-Parent objects are now loaded through the parent admin's `get_object()` method,
-so custom `get_queryset()` filters affect nested pages. Each parent in the URL
-must also pass that admin's `has_view_or_change_permission(request, obj)` check.
-A parent hidden by the queryset returns 404; a visible parent without permission
-returns 403. Child permissions alone no longer grant access through a parent.
+Parent objects are now loaded through the parent admin's `get_object()` method, so custom `get_queryset()` filters affect nested pages. Each parent in the URL must also pass that admin's `has_view_or_change_permission(request, obj)` check. A parent hidden by the queryset returns 404; a visible parent without permission returns 403. Child permissions alone no longer grant access through a parent.
 
 If you need the previous direct model lookup while adapting a project, set:
 
@@ -125,14 +108,8 @@ If you need the previous direct model lookup while adapting a project, set:
 SUBADMIN_USE_DIRECT_PARENT_LOOKUP = True
 ```
 
-This changes how parents are loaded, but does not skip the parent permission
-check.
+This changes how parents are loaded, but does not skip the parent permission check.
 
-Custom overrides of `get_parent_instance()` and `get_subadmin_helper()` need to
-accept `request` as their first argument after `self`. Their signatures are now
-`get_parent_instance(self, request, parent_id)` and
-`get_subadmin_helper(self, request, view_args, object_id=None)`.
+Custom overrides of `get_parent_instance()` and `get_subadmin_helper()` need to accept `request` as their first argument after `self`. Their signatures are now `get_parent_instance(self, request, parent_id)` and `get_subadmin_helper(self, request, view_args, object_id=None)`.
 
-`SubAdmin` wraps forms to validate parent-scoped fields. If you override
-`get_form()` or `get_changelist_form()`, call `super()` so that wrapping still
-runs.
+`SubAdmin` wraps forms to validate parent-scoped fields. If you override `get_form()` or `get_changelist_form()`, call `super()` so that wrapping still runs.
